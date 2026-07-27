@@ -1,6 +1,10 @@
 -- ============================================================
 -- WG POS – Row Level Security (RLS)
 -- ============================================================
+-- ⚠️  WARNING: The "allow_all" policies below are for DEVELOPMENT only.
+--     Before deploying to production, replace them with the role-based
+--     policies in the "Production RLS" section at the bottom of this file.
+-- ============================================================
 
 -- Enable RLS on all tables
 ALTER TABLE branches ENABLE ROW LEVEL SECURITY;

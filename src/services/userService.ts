@@ -10,11 +10,13 @@ export interface LoginCredentials {
 export async function loginUser(
   credentials: LoginCredentials,
 ): Promise<{ user: User; permissions: PermissionKey[] }> {
+  const hash = await hashPassword(credentials.password)
+
   const { data, error } = await supabase
     .from('users')
     .select('*')
     .ilike('name', credentials.name)
-    .eq('password_hash', hashPassword(credentials.password))
+    .eq('password_hash', hash)
     .eq('is_active', true)
     .single()
 
@@ -48,9 +50,10 @@ export async function createUser(
   payload: Omit<User, 'id' | 'created_at' | 'updated_at'> & { password: string },
 ): Promise<User> {
   const { password, ...rest } = payload
+  const hash = await hashPassword(password)
   const { data, error } = await supabase
     .from('users')
-    .insert({ ...rest, password_hash: hashPassword(password) })
+    .insert({ ...rest, password_hash: hash })
     .select()
     .single()
   if (error) throw error
@@ -60,7 +63,7 @@ export async function createUser(
 export async function updateUser(id: string, payload: Partial<User> & { password?: string }): Promise<User> {
   const updates: Record<string, unknown> = { ...payload }
   if (payload.password) {
-    updates.password_hash = hashPassword(payload.password)
+    updates.password_hash = await hashPassword(payload.password)
     delete updates.password
   }
   const { data, error } = await supabase
@@ -99,13 +102,15 @@ export async function saveUserPermissions(
   }
 }
 
-function hashPassword(password: string): string {
-  // Simple hash for demo – in production use bcrypt via Edge Function
-  let hash = 0
-  for (let i = 0; i < password.length; i++) {
-    const chr = password.charCodeAt(i)
-    hash = (hash << 5) - hash + chr
-    hash |= 0
-  }
-  return Math.abs(hash).toString(16)
+/**
+ * Hash a password using SHA-256 via the Web Crypto API.
+ * NOTE: For production deployments, use bcrypt via a Supabase Edge Function
+ * or consider migrating to Supabase Auth for proper password management.
+ */
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(password)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 }

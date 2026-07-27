@@ -132,26 +132,15 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
   return Array.from(grouped.values()).sort((a, b) => b.total - a.total)
 }
 
-export async function getLowStockProducts(branchId: string) {
-  const { data, error } = await supabase
+// branchId parameter reserved for future branch-level stock filtering
+export async function getLowStockProducts(_branchId: string) {
+  const { data } = await supabase
     .from('products')
     .select('id, name, stock, min_stock, unit')
-    .lte('stock', supabase.rpc('get_min_stock', { p_id: 'dummy' }) as unknown as number)
     .order('stock')
-    .limit(20)
+    .limit(50)
 
-  if (error) {
-    // fallback raw query
-    const { data: fallback } = await supabase
-      .from('products')
-      .select('id, name, stock, min_stock, unit')
-      .order('stock')
-      .limit(20)
-
-    return (fallback ?? []).filter(
-      (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
-    )
-  }
-
-  return data ?? []
+  return (data ?? []).filter(
+    (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
+  )
 }

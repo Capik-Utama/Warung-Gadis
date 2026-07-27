@@ -18,7 +18,7 @@ INSERT INTO users (id, name, phone, address, role, branch_id, password_hash, is_
     'Bendungan',
     'owner',
     NULL,
-    '5e8ff9bf55ba3508199d22e984129be6',  -- hash of 'admin123'
+    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',  -- hash of 'admin123'
     true
   )
 ON CONFLICT (id) DO NOTHING;
@@ -54,7 +54,7 @@ INSERT INTO users (id, name, phone, address, role, branch_id, password_hash, is_
     'Alamat Staff',
     'staff',
     '00000000-0000-0000-0000-000000000001',
-    '5e8ff9bf55ba3508199d22e984129be6',
+    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
     true
   ),
   (
@@ -64,7 +64,7 @@ INSERT INTO users (id, name, phone, address, role, branch_id, password_hash, is_
     'Alamat Manager',
     'manager',
     '00000000-0000-0000-0000-000000000001',
-    '5e8ff9bf55ba3508199d22e984129be6',
+    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
     true
   )
 ON CONFLICT (id) DO NOTHING;

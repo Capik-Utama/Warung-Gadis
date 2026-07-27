@@ -9,9 +9,29 @@ import { Modal } from '@/components/ui/Modal'
 import { roleBadge, statusBadge } from '@/components/ui/Badge'
 import { useAuthStore } from '@/store/authStore'
 import { ALL_PERMISSIONS } from '@/permissions'
-import type { User, PermissionKey } from '@/types'
+import type { User, PermissionKey, UserRole } from '@/types'
 
-const defaultForm: { name: string; address: string; phone: string; role: import('@/types').UserRole; password: string; is_active: boolean; branch_id: string | null; avatar_url: string | null } = { name: '', address: '', phone: '', role: 'staff', password: '', is_active: true, branch_id: null, avatar_url: null }
+interface UserForm {
+  name: string
+  address: string
+  phone: string
+  role: UserRole
+  password: string
+  is_active: boolean
+  branch_id: string | null
+  avatar_url: string | null
+}
+
+const defaultForm: UserForm = {
+  name: '',
+  address: '',
+  phone: '',
+  role: 'staff',
+  password: '',
+  is_active: true,
+  branch_id: null,
+  avatar_url: null,
+}
 
 export default function UserPage() {
   const { user: currentUser } = useAuthStore()
