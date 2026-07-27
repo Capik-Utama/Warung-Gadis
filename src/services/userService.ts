@@ -1,0 +1,111 @@
+import { supabase } from '@/config/supabase'
+import type { User, UserRole, PermissionKey } from '@/types'
+import { ROLE_DEFAULT_PERMISSIONS } from '@/permissions'
+
+export interface LoginCredentials {
+  name: string
+  password: string
+}
+
+export async function loginUser(
+  credentials: LoginCredentials,
+): Promise<{ user: User; permissions: PermissionKey[] }> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .ilike('name', credentials.name)
+    .eq('password_hash', hashPassword(credentials.password))
+    .eq('is_active', true)
+    .single()
+
+  if (error || !data) throw new Error('Nama atau password salah')
+
+  const user = data as User
+
+  // Fetch extra user permissions
+  const { data: permData } = await supabase
+    .from('user_permissions')
+    .select('permission_key')
+    .eq('user_id', user.id)
+
+  const extraPerms = (permData ?? []).map((p: { permission_key: string }) => p.permission_key as PermissionKey)
+  const defaultPerms = ROLE_DEFAULT_PERMISSIONS[user.role as UserRole] ?? []
+  const allPerms = Array.from(new Set([...defaultPerms, ...extraPerms]))
+
+  return { user, permissions: allPerms }
+}
+
+export async function fetchUsers(): Promise<User[]> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('name')
+  if (error) throw error
+  return data as User[]
+}
+
+export async function createUser(
+  payload: Omit<User, 'id' | 'created_at' | 'updated_at'> & { password: string },
+): Promise<User> {
+  const { password, ...rest } = payload
+  const { data, error } = await supabase
+    .from('users')
+    .insert({ ...rest, password_hash: hashPassword(password) })
+    .select()
+    .single()
+  if (error) throw error
+  return data as User
+}
+
+export async function updateUser(id: string, payload: Partial<User> & { password?: string }): Promise<User> {
+  const updates: Record<string, unknown> = { ...payload }
+  if (payload.password) {
+    updates.password_hash = hashPassword(payload.password)
+    delete updates.password
+  }
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data as User
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  const { error } = await supabase.from('users').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function getUserPermissions(userId: string): Promise<PermissionKey[]> {
+  const { data, error } = await supabase
+    .from('user_permissions')
+    .select('permission_key')
+    .eq('user_id', userId)
+  if (error) throw error
+  return (data ?? []).map((p: { permission_key: string }) => p.permission_key as PermissionKey)
+}
+
+export async function saveUserPermissions(
+  userId: string,
+  permissions: PermissionKey[],
+): Promise<void> {
+  await supabase.from('user_permissions').delete().eq('user_id', userId)
+  if (permissions.length > 0) {
+    const rows = permissions.map((key) => ({ user_id: userId, permission_key: key }))
+    const { error } = await supabase.from('user_permissions').insert(rows)
+    if (error) throw error
+  }
+}
+
+function hashPassword(password: string): string {
+  // Simple hash for demo – in production use bcrypt via Edge Function
+  let hash = 0
+  for (let i = 0; i < password.length; i++) {
+    const chr = password.charCodeAt(i)
+    hash = (hash << 5) - hash + chr
+    hash |= 0
+  }
+  return Math.abs(hash).toString(16)
+}
