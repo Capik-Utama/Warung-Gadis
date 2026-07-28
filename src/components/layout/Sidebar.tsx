@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Package, Tag, Truck, BarChart3,
   Users, GitBranch, Settings, Database, Palette, Clock,
-  TrendingUp, CreditCard, Heart, LogOut, ChevronLeft, ChevronRight,
+  TrendingUp, CreditCard, LogOut, ChevronLeft, ChevronRight,
   AlertTriangle, Menu, X,
 } from 'lucide-react'
 import { AppLogo } from '@/components/shared/Logo'
@@ -27,7 +27,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { key: 'transaksi', label: 'Transaksi', path: '/transaksi', icon: <CreditCard size={18} /> },
   { key: 'hutang', label: 'Hutang', path: '/hutang', icon: <AlertTriangle size={18} /> },
   { key: 'laporan', label: 'Laporan', path: '/laporan', icon: <TrendingUp size={18} /> },
-  { key: 'favorit', label: 'Favorit', path: '/favorit', icon: <Heart size={18} /> },
   { key: 'shift', label: 'Shift', path: '/shift', icon: <Clock size={18} /> },
   { key: 'user', label: 'User', path: '/user', icon: <Users size={18} /> },
   { key: 'cabang', label: 'Cabang', path: '/cabang', icon: <GitBranch size={18} /> },

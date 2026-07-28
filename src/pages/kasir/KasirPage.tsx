@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus,
+  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus, Heart,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
@@ -20,7 +20,22 @@ import { Modal } from '@/components/ui/Modal'
 import { formatCurrency } from '@/utils/format'
 import type { Product, PaymentMethod, Transaction, TransactionItem } from '@/types'
 
-type ViewTab = 'all' | 'pending' | string // string = category id
+const STORAGE_KEY = 'wg-favorites'
+
+type ViewTab = 'all' | 'pending' | 'favorit' | string // string = category id
+
+function useFavorites(userId: string) {
+  const key = `${STORAGE_KEY}-${userId}`
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(key) ?? '[]') } catch { return [] }
+  })
+  const toggle = (id: string) => {
+    const next = favorites.includes(id) ? favorites.filter((f: string) => f !== id) : [...favorites, id]
+    setFavorites(next)
+    localStorage.setItem(key, JSON.stringify(next))
+  }
+  return { favorites, toggle }
+}
 
 export default function KasirPage() {
   const { user, selectedBranch } = useAuthStore()
@@ -28,7 +43,7 @@ export default function KasirPage() {
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
-  const [activeTab, setActiveTab] = useState<ViewTab>('all')
+  const [activeTab, setActiveTab] = useState<ViewTab>('pending')
   const [payModal, setPayModal] = useState(false)
   const [debtModal, setDebtModal] = useState(false)
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
@@ -38,6 +53,7 @@ export default function KasirPage() {
   const [debtAddress, setDebtAddress] = useState('')
 
   const branchId = selectedBranch?.id ?? ''
+  const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -93,9 +109,10 @@ export default function KasirPage() {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
       if (activeTab === 'all') return matchSearch && p.is_active
       if (activeTab === 'pending') return matchSearch && p.is_active
+      if (activeTab === 'favorit') return matchSearch && p.is_active && favorites.includes(p.id)
       return matchSearch && p.category_id === activeTab && p.is_active
     })
-  }, [products, search, activeTab])
+  }, [products, search, activeTab, favorites])
 
   const checkedTotal = cart.getCheckedTotal()
   const checkedCount = cart.getCheckedCount()
@@ -264,6 +281,14 @@ export default function KasirPage() {
           PENDING
         </TabButton>
         <TabButton
+          active={activeTab === 'favorit'}
+          onClick={() => setActiveTab('favorit')}
+          badge={favorites.length > 0 ? favorites.length : undefined}
+          color="green"
+        >
+          FAVORIT
+        </TabButton>
+        <TabButton
           active={activeTab === 'all'}
           onClick={() => setActiveTab('all')}
           color="blue"
@@ -348,7 +373,7 @@ export default function KasirPage() {
                       </div>
                     </div>
 
-                    {/* Qty + Subtotal */}
+                    {/* Qty + Subtotal + Favorite */}
                     {isChecked ? (
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="flex items-center gap-1">
@@ -382,9 +407,18 @@ export default function KasirPage() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
-                        Stok: {product.stock}
-                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => toggleFavorite(product.id)}
+                          className="flex-shrink-0 transition-colors"
+                          style={{ color: favorites.includes(product.id) ? '#ef4444' : 'var(--text-muted)' }}
+                        >
+                          <Heart size={16} fill={favorites.includes(product.id) ? '#ef4444' : 'none'} />
+                        </button>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          Stok: {product.stock}
+                        </span>
+                      </div>
                     )}
                   </div>
                 )
@@ -395,7 +429,7 @@ export default function KasirPage() {
       </div>
 
       {/* BOTTOM BAR */}
-      {activeTab !== 'pending' && (
+      {activeTab !== 'pending' && activeTab !== 'favorit' && (
         <div
           className="flex-shrink-0 p-3 rounded-xl border flex flex-col gap-2"
           style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
@@ -626,7 +660,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5"
+      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap"
       style={{
         background: active ? colorVal : 'var(--bg-card)',
         border: '1px solid var(--border-color)',
