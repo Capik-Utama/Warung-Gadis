@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
   Users, GitBranch, Coffee, Mic2, Tv, Clock, ChevronRight,
@@ -312,26 +313,26 @@ function StaffDashboard() {
   })
 
   const [stockModal, setStockModal] = useState(false)
-  const totalDebt = debts.reduce((sum, d) => sum + d.remaining_amount, 0)
+  const totalDebt = (debts ?? []).reduce((sum, d) => sum + (d.remaining_amount ?? 0), 0)
 
   return (
     <div className="space-y-6 pt-4">
       {/* Quick menu */}
       <div className="grid grid-cols-2 gap-4">
-        <a href="/kasir" className="card card-hover p-6 text-center cursor-pointer">
+        <Link to="/kasir" className="card card-hover p-6 text-center cursor-pointer">
           <ShoppingCart size={32} className="mx-auto mb-3 text-blue-500" />
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Kasir</p>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Mulai transaksi</p>
-        </a>
-        <a href="/hutang" className="card card-hover p-6 text-center cursor-pointer">
+        </Link>
+        <Link to="/hutang" className="card card-hover p-6 text-center cursor-pointer">
           <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Hutang</p>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total: {formatCurrency(totalDebt)}</p>
-        </a>
+        </Link>
       </div>
 
       {/* Hutang Card - Global */}
-      <a href="/hutang" className="card p-5 border-l-4 border-amber-500 cursor-pointer transition-all hover:shadow-md">
+      <Link to="/hutang" className="card p-5 border-l-4 border-amber-500 cursor-pointer transition-all hover:shadow-md" style={{ display: 'block' }}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <AlertTriangle size={18} className="text-amber-500" />
@@ -341,9 +342,9 @@ function StaffDashboard() {
         </div>
         <p className="text-2xl font-bold text-amber-600 mb-1">{formatCurrency(totalDebt)}</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {debts.length} pelanggan • Semua lokasi
+          {(debts ?? []).length} pelanggan • Semua lokasi
         </p>
-      </a>
+      </Link>
 
       {/* Stok Menipis Card */}
       <div
@@ -392,7 +393,7 @@ function StaffDashboard() {
         <div>
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Status Shift</p>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            <a href="/shift" className="text-blue-500 hover:underline">Kelola shift Anda</a>
+            <Link to="/shift" className="text-blue-500 hover:underline">Kelola shift Anda</Link>
           </p>
         </div>
       </div>
