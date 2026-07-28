@@ -88,7 +88,7 @@ export default function UserPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div><h1 className="page-title">Manajemen User</h1><p className="page-subtitle">{users.length} user terdaftar</p></div>
-        {currentUser?.role === 'owner' && <Button variant="primary" icon={<Plus size={16} />} onClick={openAdd}>Tambah User</Button>}
+        {currentUser?.role === 'developer' && <Button variant="primary" icon={<Plus size={16} />} onClick={openAdd}>Tambah User</Button>}
       </div>
       <Input placeholder="Cari user..." value={search} onChange={e => setSearch(e.target.value)} leftIcon={<Search size={16} />} />
       <div className="table-container">
@@ -112,11 +112,11 @@ export default function UserPage() {
                   <td>{statusBadge(u.is_active ? 'active' : 'inactive')}</td>
                   <td>
                     <div className="flex gap-1">
-                      {currentUser?.role === 'owner' && (
+                      {currentUser?.role === 'developer' && (
                         <>
                           <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500"><Pencil size={15} /></button>
                           <button onClick={() => openPerms(u)} className="p-1.5 rounded-lg hover:bg-purple-50 text-purple-500" title="Hak akses"><Shield size={15} /></button>
-                          {u.id !== currentUser.id && u.role !== 'owner' && (
+                          {u.id !== currentUser.id && u.role !== 'developer' && (
                             <button onClick={() => setDel(u)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={15} /></button>
                           )}
                         </>
@@ -135,8 +135,8 @@ export default function UserPage() {
           <Input label="Nama *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           <Input label="Alamat" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
           <Input label="Nomor HP" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-          <Select label="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as 'owner'|'manager'|'staff' }))}
-            options={[{ value: 'owner', label: 'Owner' }, { value: 'manager', label: 'Manager' }, { value: 'staff', label: 'Staff' }]} />
+          <Select label="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as 'developer'|'manager'|'staff' }))}
+            options={[{ value: 'developer', label: 'Developer' }, { value: 'manager', label: 'Manager' }, { value: 'staff', label: 'Staff' }]} />
           <Input label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
           <div className="flex items-center gap-2">
             <input type="checkbox" id="active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4" />
