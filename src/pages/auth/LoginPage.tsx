@@ -131,38 +131,7 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-center text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Akses Darurat</p>
-              <Button
-                variant="secondary"
-                className="w-full text-blue-500 border-blue-200"
-                onClick={() => {
-                  setLoading(true);
-                  // TOTAL BYPASS: Langsung login sebagai Capik Developer
-                  const virtualUser = {
-                    id: '00000000-0000-0000-0000-000000000009',
-                    name: 'Capik',
-                    role: 'developer' as const,
-                    phone: '089675669989',
-                    address: 'Wangon Mas',
-                    is_active: true,
-                    branch_id: null,
-                    avatar_url: null,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  };
-                  
-                  setUser(virtualUser);
-                  setPermissions(['add_product', 'edit_product', 'delete_product', 'add_stock', 'input_expense', 'buy_gas', 'take_cash', 'edit_price', 'export_data', 'import_data', 'view_report', 'view_all_branches', 'manage_users', 'manage_branches', 'manage_categories', 'manage_suppliers', 'delete_transaction', 'backup_restore'] as any);
-                  setSelectedBranch(null);
-                  toast.success('Login Bypass Berhasil! Selamat datang Capik.');
-                  navigate('/');
-                  setLoading(false);
-                }}
-              >
-                Login sebagai Capik (Developer)
-              </Button>
-            </div>
+
           </div>
         ) : (
           <div className="card p-6 animate-slide-up">
