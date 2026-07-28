@@ -2,7 +2,7 @@ import type { UserRole, PermissionKey } from '@/types'
 
 // Menu items visible per role
 export const ROLE_MENUS: Record<UserRole, string[]> = {
-  owner: [
+  developer: [
     'dashboard',
     'kasir',
     'produk',
@@ -35,7 +35,7 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
 
 // Default permissions per role
 export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
-  owner: [
+  developer: [
     'add_product',
     'edit_product',
     'delete_product',

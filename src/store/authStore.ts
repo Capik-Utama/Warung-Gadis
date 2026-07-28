@@ -11,7 +11,7 @@ interface AuthStore {
   setPermissions: (perms: PermissionKey[]) => void
   logout: () => void
   hasPermission: (key: PermissionKey) => boolean
-  isOwner: () => boolean
+  isDeveloper: () => boolean
   isManager: () => boolean
   isStaff: () => boolean
 }
@@ -33,11 +33,11 @@ export const useAuthStore = create<AuthStore>()(
       hasPermission: (key) => {
         const { user, permissions } = get()
         if (!user) return false
-        if (user.role === 'owner') return true
+        if (user.role === 'developer') return true
         return permissions.includes(key)
       },
 
-      isOwner: () => get().user?.role === 'owner',
+      isDeveloper: () => get().user?.role === 'developer',
       isManager: () => get().user?.role === 'manager',
       isStaff: () => get().user?.role === 'staff',
     }),

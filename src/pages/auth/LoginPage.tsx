@@ -145,7 +145,7 @@ export default function LoginPage() {
                   </p>
                 </button>
               ))}
-              {tempUser?.role === 'owner' && (
+              {tempUser?.role === 'developer' && (
                 <button
                   onClick={() => handleSelectBranch(null)}
                   className="w-full text-left p-4 rounded-xl border-2 border-dashed transition-all hover:border-blue-400"

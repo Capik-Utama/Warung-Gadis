@@ -56,11 +56,11 @@ CREATE POLICY "allow_all" ON shift_handovers FOR ALL USING (true);
 -- CREATE POLICY "auth_read_branches" ON branches
 --   FOR SELECT USING (auth.role() = 'authenticated');
 
--- Example: Owner can manage users
--- CREATE POLICY "owner_manage_users" ON users
+-- Example: Developer can manage users
+-- CREATE POLICY "developer_manage_users" ON users
 --   FOR ALL USING (
 --     EXISTS (
 --       SELECT 1 FROM users u
---       WHERE u.id = auth.uid()::uuid AND u.role = 'owner'
+--       WHERE u.id = auth.uid()::uuid AND u.role = 'developer'
 --     )
 --   );

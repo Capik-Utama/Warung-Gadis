@@ -8,17 +8,33 @@ INSERT INTO branches (id, name, address, phone, is_active) VALUES
   ('00000000-0000-0000-0000-000000000002', 'Warung Gadis Cabang 2', 'Cabang 2', '087733662601', true)
 ON CONFLICT (id) DO NOTHING;
 
--- ─── Default Owner ─────────────────────────────────────────
--- Password: "admin123" → simple hash (for demo)
+-- ─── Default Users ─────────────────────────────────────────
+-- Akun Capik (Developer)
+-- Password: "@Capik190989" -> hash: 264e5b43c54210226f70541ac5482895bf82559bf1c41b2008fa249831ffc508
+INSERT INTO users (id, name, phone, address, role, branch_id, password_hash, is_active) VALUES
+  (
+    '00000000-0000-0000-0000-000000000009',
+    'Capik',
+    '089675669989',
+    'Wangon Mas',
+    'developer',
+    NULL,
+    '264e5b43c54210226f70541ac5482895bf82559bf1c41b2008fa249831ffc508',
+    true
+  )
+ON CONFLICT (id) DO NOTHING;
+
+-- Akun Mama Pia (Manager)
+-- Password: "admin123" -> hash: 240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9
 INSERT INTO users (id, name, phone, address, role, branch_id, password_hash, is_active) VALUES
   (
     '00000000-0000-0000-0000-000000000010',
     'Mama Pia',
     '087733662600',
     'Bendungan',
-    'owner',
-    NULL,
-    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',  -- hash of 'admin123'
+    'manager',
+    '00000000-0000-0000-0000-000000000001',
+    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
     true
   )
 ON CONFLICT (id) DO NOTHING;
@@ -53,16 +69,6 @@ INSERT INTO users (id, name, phone, address, role, branch_id, password_hash, is_
     '081234567890',
     'Alamat Staff',
     'staff',
-    '00000000-0000-0000-0000-000000000001',
-    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
-    true
-  ),
-  (
-    '00000000-0000-0000-0000-000000000012',
-    'Manager Utama',
-    '081234567891',
-    'Alamat Manager',
-    'manager',
     '00000000-0000-0000-0000-000000000001',
     '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
     true

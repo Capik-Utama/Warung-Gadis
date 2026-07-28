@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          TEXT NOT NULL,
   phone         TEXT NOT NULL DEFAULT '',
   address       TEXT NOT NULL DEFAULT '',
-  role          TEXT NOT NULL CHECK (role IN ('owner','manager','staff')) DEFAULT 'staff',
+  role          TEXT NOT NULL CHECK (role IN ('developer','manager','staff')) DEFAULT 'staff',
   branch_id     UUID REFERENCES branches(id) ON DELETE SET NULL,
   password_hash TEXT NOT NULL,
   avatar_url    TEXT,
