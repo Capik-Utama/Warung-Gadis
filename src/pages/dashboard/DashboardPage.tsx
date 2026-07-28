@@ -20,49 +20,49 @@ function OwnerDashboard() {
     queryKey: ['today-stats', branchId],
     queryFn: () => getTodayStats(branchId),
     refetchInterval: 30_000,
-    enabled: !!branchId,
   })
 
   const { data: monthlyRevenue = 0 } = useQuery({
     queryKey: ['monthly-revenue', branchId],
     queryFn: () => getMonthlyRevenue(branchId),
     refetchInterval: 60_000,
-    enabled: !!branchId,
   })
 
   const { data: topProducts = [] } = useQuery({
     queryKey: ['top-products', branchId],
     queryFn: () => getTopProducts(branchId, 5),
-    enabled: !!branchId,
   })
 
   const { data: salesChart = [] } = useQuery({
     queryKey: ['sales-chart', branchId],
     queryFn: () => getDailySales(branchId, 14),
-    enabled: !!branchId,
   })
 
   const { data: lowStock = [] } = useQuery({
-    queryKey: ['low-stock'],
+    queryKey: ['low-stock', branchId],
     queryFn: () => getLowStockProducts(branchId),
-    enabled: !!branchId,
   })
 
   const { data: recentTransactions = [] } = useQuery({
     queryKey: ['recent-trx', branchId],
     queryFn: () => fetchTransactions(branchId),
     refetchInterval: 15_000,
-    enabled: !!branchId,
   })
 
   return (
     <div className="space-y-6">
       {/* Welcome */}
-      <div>
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">
-          {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">
+            {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <div className="px-4 py-2 rounded-xl bg-blue-50 border border-blue-100">
+          <p className="text-xs text-blue-600 font-semibold uppercase tracking-wider">Cabang Aktif</p>
+          <p className="text-sm font-bold text-blue-900">{selectedBranch?.name ?? 'Semua Cabang'}</p>
+        </div>
       </div>
 
       {/* Stats */}

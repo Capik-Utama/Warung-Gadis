@@ -3,10 +3,15 @@ import type { Transaction, TransactionItem, PaymentMethod } from '@/types'
 import { generateCode } from '@/utils/format'
 
 export async function fetchTransactions(branchId: string): Promise<Transaction[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('transactions')
     .select('*, user:users(id,name), branch:branches(id,name), items:transaction_items(*, product:products(id,name,unit))')
-    .eq('branch_id', branchId)
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw error

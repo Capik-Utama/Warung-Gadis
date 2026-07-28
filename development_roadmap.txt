@@ -1,0 +1,47 @@
+WG POS (Warung Gadis) - Development Roadmap & Gap Analysis
+=======================================================
+
+Berdasarkan analisis antara Spesifikasi Proyek (pasted_content.txt) dan Kode Saat Ini, berikut adalah daftar fitur yang belum ada, perlu dikoreksi, atau ditingkatkan.
+
+---
+
+1. FITUR YANG BELUM ADA (MISSING FEATURES)
+------------------------------------------
+[ ] IMPORT/EXPORT EXCEL: Belum ada fitur import produk dari Excel (hanya ada UI export sederhana).
+[ ] NOTIFIKASI STOK: Belum ada sistem push notification atau alert sistemik saat stok mencapai minimum (baru sekadar indikator warna di tabel).
+[ ] DASHBOARD STAFF (FAVORIT): Fitur untuk staf mengatur makanan/minuman favorit mereka sendiri belum diimplementasikan.
+[ ] DASHBOARD OWNER (REALTIME): Grafik dan statistik belum sepenuhnya realtime (masih mengandalkan refresh manual atau query cache).
+[ ] RESTORE DATA: Tombol restore di halaman backup masih berupa simulasi (mockup).
+[ ] SISTEM SHIFT (PULANG): Logika tombol "Pulang" yang aktif hanya setelah staf pengganti "Masuk" belum diimplementasikan secara ketat di UI.
+[ ] LOGO & BANNER: Belum ada aset visual sesuai spesifikasi (Cangkir, Mic, Bola).
+
+2. KOREKSI FITUR (BUG & LOGIC CORRECTIONS)
+------------------------------------------
+[!] KASIR (SELEKSI ITEM):
+    - Masalah: Total harga sudah benar menghitung item yang dicentang, tetapi saat klik "Bayar", sistem mengirim SEMUA item di keranjang ke database.
+    - Perbaikan: Ubah logika checkout agar hanya memproses `getSelectedItems()`.
+[!] PENGURANGAN STOK:
+    - Masalah: Transaksi saat ini TIDAK mengurangi stok produk di tabel `products`.
+    - Perbaikan: Tambahkan trigger database atau panggil `stockService` saat transaksi berhasil.
+[!] PEMBAYARAN HUTANG LINTAS CABANG:
+    - Masalah: Logika "Status otomatis berubah jika dibayar di cabang lain" belum teruji di level database.
+[!] KEAMANAN (RLS):
+    - Masalah: Kebijakan database masih "allow_all" (Sangat Berbahaya).
+    - Perbaikan: Implementasikan Role-Based Access Control (RBAC) di level Supabase.
+
+3. PENINGKATAN TEKNIS (TECHNICAL IMPROVEMENTS)
+----------------------------------------------
+[ ] MIGRASI SUPABASE AUTH: Mengganti sistem login manual (SHA-256 client-side) ke Supabase Auth agar lebih aman dan standar industri.
+[ ] SERVER-SIDE REPORTING: Mengganti kalkulasi laporan di browser dengan Database Views/RPC agar aplikasi tetap cepat saat data sudah besar.
+[ ] PWA OPTIMIZATION: Memastikan service worker berjalan sempurna untuk fitur "Add to Home Screen".
+
+---
+
+TAHAP PENGEMBANGAN SELANJUTNYA (REKOMENDASI):
+1. Perbaikan Bug Kasir (Seleksi Item) & Pengurangan Stok (Kritis).
+2. Implementasi Keamanan Database (RLS).
+3. Implementasi Sistem Shift (Masuk/Pulang) sesuai alur spesifikasi.
+4. Fitur Import/Export Excel untuk mempermudah input data awal.
+
+File ini dibuat pada: 28 Juli 2026
+Status Proyek: Development / Beta

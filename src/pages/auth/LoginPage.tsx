@@ -34,9 +34,20 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { user, permissions } = await loginUser({ name: name.trim(), password })
+      
+      // Jika Developer atau Manager, langsung masuk tanpa pilih cabang
+      if (user.role === 'developer' || user.role === 'manager') {
+        setUser(user)
+        setPermissions(permissions as any)
+        setSelectedBranch(null) // null berarti semua cabang
+        toast.success(`Selamat datang, ${user.name}!`)
+        navigate('/')
+        return
+      }
+
+      // Jika Staff, harus pilih cabang
       setTempUser(user)
       setTempPerms(permissions)
-
       const branchList = await fetchBranches()
       setBranches(branchList)
       setStep('branch')

@@ -5,13 +5,17 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
   const since = new Date()
   since.setDate(since.getDate() - days)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('transactions')
     .select('created_at, total_amount')
-    .eq('branch_id', branchId)
     .eq('status', 'paid')
     .gte('created_at', since.toISOString())
-    .order('created_at')
+  
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data, error } = await query.order('created_at')
 
   if (error) throw error
 
@@ -33,11 +37,16 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
 export async function getTodayStats(branchId: string) {
   const today = new Date().toISOString().slice(0, 10)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('transactions')
     .select('total_amount, status')
-    .eq('branch_id', branchId)
     .gte('created_at', `${today}T00:00:00`)
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -57,24 +66,33 @@ export async function getMonthlyRevenue(branchId: string): Promise<number> {
   start.setDate(1)
   start.setHours(0, 0, 0, 0)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('transactions')
     .select('total_amount')
-    .eq('branch_id', branchId)
     .eq('status', 'paid')
     .gte('created_at', start.toISOString())
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
   return (data ?? []).reduce((sum: number, r: { total_amount: number }) => sum + r.total_amount, 0)
 }
 
 export async function getTopProducts(branchId: string, limit = 10): Promise<TopProduct[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('transaction_items')
     .select('product_id, quantity, subtotal, product:products(name), transaction:transactions!inner(branch_id, status)')
-    .eq('transaction.branch_id', branchId)
     .eq('transaction.status', 'paid')
-    .limit(500)
+
+  if (branchId) {
+    query = query.eq('transaction.branch_id', branchId)
+  }
+
+  const { data, error } = await query.limit(500)
 
   if (error) throw error
 

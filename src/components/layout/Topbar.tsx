@@ -1,6 +1,8 @@
 import React from 'react'
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 interface TopbarProps {
   title: string
@@ -9,7 +11,14 @@ interface TopbarProps {
 }
 
 export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
-  const { user, selectedBranch } = useAuthStore()
+  const navigate = useNavigate()
+  const { user, selectedBranch, logout } = useAuthStore()
+
+  const handleLogout = () => {
+    logout()
+    toast.success('Berhasil keluar')
+    navigate('/login')
+  }
 
   return (
     <header
@@ -67,6 +76,13 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
             </p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="p-2 rounded-xl transition-colors text-red-500 hover:bg-red-50"
+          title="Keluar"
+        >
+          <LogOut size={18} />
+        </button>
       </div>
     </header>
   )
