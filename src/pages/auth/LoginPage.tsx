@@ -174,7 +174,7 @@ export default function LoginPage() {
         )}
 
         <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
-          © 2025 WG POS – Warung Gadis
+          © 2026 Warung Gadis - By Capik
         </p>
       </div>
     </div>
