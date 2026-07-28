@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { DollarSign, Phone, MapPin, MapPinned, ChevronDown, ChevronUp } from 'lucide-react'
+import { DollarSign, MapPinned, ChevronDown, ChevronUp, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchDebts, fetchPaidDebts, payDebt, fetchDebtPayments } from '@/services/debtService'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { statusBadge } from '@/components/ui/Badge'
 import { formatCurrency, formatDateTime } from '@/utils/format'
@@ -249,11 +248,17 @@ export default function HutangPage() {
                               </p>
                               {statusBadge(debt.status)}
                             </div>
-                            <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                              <MapPinned size={12} />
-                              <span>{debt.branch?.name ?? 'Cabang tidak diketahui'}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                <MapPinned size={12} className="text-blue-500" />
+                                <span>{debt.branch?.name ?? 'Cabang tidak diketahui'}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                <User size={12} className="text-purple-500" />
+                                <span>Staf: {debt.transaction?.user?.name ?? 'Tidak diketahui'}</span>
+                              </div>
                             </div>
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
                               {formatDateTime(debt.created_at)}
                             </p>
                           </div>
@@ -349,86 +354,75 @@ export default function HutangPage() {
         isOpen={payModal}
         onClose={() => setPayModal(false)}
         title="Bayar Hutang"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setPayModal(false)}>Batal</Button>
-            <Button
-              variant="success"
-              loading={payMutation.isPending}
-              onClick={() => payMutation.mutate()}
-              disabled={payAmount === ''}
-            >
-              Konfirmasi Bayar
-            </Button>
-          </>
-        }
       >
-        {selected && (
-          <div className="space-y-4">
-            {/* Customer Info */}
-            <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-              <p className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
-                {selected.customer_name}
-              </p>
-              {selected.customer_address && (
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <MapPin size={10} className="inline mr-1" />
-                  {selected.customer_address}
-                </p>
-              )}
-              {selected.customer_phone && (
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  <Phone size={10} className="inline mr-1" />
-                  {selected.customer_phone}
-                </p>
-              )}
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                Cabang asal: {selected.branch?.name ?? '-'}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                Cabang bayar: {selectedBranch?.name ?? selected.branch?.name ?? '-'}
-              </p>
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Pelanggan</p>
+            <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selected?.customer_name}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs px-2 py-1 rounded-lg bg-blue-100 text-blue-600 font-medium">
+                {selected?.branch?.name}
+              </span>
+              <span className="text-xs px-2 py-1 rounded-lg bg-purple-100 text-purple-600 font-medium">
+                Staf: {selected?.transaction?.user?.name}
+              </span>
             </div>
-
-            <div className="flex justify-between p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Sisa Hutang</span>
-              <span className="font-bold text-red-500">{formatCurrency(selected.remaining_amount)}</span>
-            </div>
-
-            <Input
-              label="Jumlah Bayar *"
-              type="number"
-              value={payAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
-              placeholder="0"
-            />
-
-            {parseInt(payAmount.replace(/\D/g, ''), 10) > 0 && (
-              <div className="flex justify-between p-3 rounded-xl text-sm" style={{ background: 'var(--bg-primary)' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Sisa Setelah Bayar</span>
-                <span className="font-bold">
-                  {formatCurrency(
-                    Math.max(
-                      0,
-                      selected.remaining_amount - (parseInt(payAmount.replace(/\D/g, ''), 10) || 0),
-                    ),
-                  )}
-                </span>
-              </div>
-            )}
-
-            <Input
-              label="Keterangan (Opsional)"
-              value={payNotes}
-              onChange={(e) => setPayNotes(e.target.value)}
-              placeholder="Catatan pembayaran..."
-            />
-
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Pembayaran ini akan dicatat di cabang yang sedang Anda pilih.
-            </p>
           </div>
-        )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[10px] mb-1 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Sisa Hutang</p>
+              <p className="font-bold text-red-500">{formatCurrency(selected?.remaining_amount ?? 0)}</p>
+            </div>
+            <div className="p-3 rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[10px] mb-1 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total Awal</p>
+              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(selected?.total_amount ?? 0)}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Jumlah Bayar</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-400">Rp</span>
+                <input
+                  type="text"
+                  value={payAmount}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    setPayAmount(val ? parseInt(val).toLocaleString('id-ID') : '')
+                  }}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border font-bold text-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Catatan (Opsional)</label>
+              <textarea
+                value={payNotes}
+                onChange={(e) => setPayNotes(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none h-20"
+                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                placeholder="Tambahkan keterangan pembayaran..."
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setPayModal(false)}>Batal</Button>
+            <Button 
+              variant="primary" 
+              className="flex-1" 
+              onClick={() => payMutation.mutate()}
+              isLoading={payMutation.isPending}
+            >
+              Simpan Pembayaran
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

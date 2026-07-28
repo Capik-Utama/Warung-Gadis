@@ -5,7 +5,7 @@ import { generateCode } from '@/utils/format'
 export async function fetchDebts(): Promise<Debt[]> {
   const { data, error } = await supabase
     .from('debts')
-    .select('*, branch:branches(id,name), transaction:transactions(id,code)')
+    .select('*, branch:branches(id,name), transaction:transactions(id,code,user:users(id,name))')
     .neq('status', 'paid')
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -15,7 +15,7 @@ export async function fetchDebts(): Promise<Debt[]> {
 export async function fetchDebtsAll(): Promise<Debt[]> {
   const { data, error } = await supabase
     .from('debts')
-    .select('*, branch:branches(id,name), transaction:transactions(id,code)')
+    .select('*, branch:branches(id,name), transaction:transactions(id,code,user:users(id,name))')
     .neq('status', 'paid')
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -25,7 +25,7 @@ export async function fetchDebtsAll(): Promise<Debt[]> {
 export async function fetchPaidDebts(): Promise<Debt[]> {
   const { data, error } = await supabase
     .from('debts')
-    .select('*, branch:branches(id,name), transaction:transactions(id,code)')
+    .select('*, branch:branches(id,name), transaction:transactions(id,code,user:users(id,name))')
     .eq('status', 'paid')
     .order('updated_at', { ascending: false })
     .limit(100)
@@ -108,11 +108,10 @@ export async function fetchDebtMembers(): Promise<string[]> {
   const { data, error } = await supabase
     .from('debts')
     .select('customer_name')
-    .neq('status', 'paid')
     .order('customer_name')
   if (error) throw error
   
-  // Get unique names
+  // Get unique names (all names who ever had debt)
   const uniqueNames = Array.from(new Set((data as { customer_name: string }[]).map(d => d.customer_name)))
   return uniqueNames
 }

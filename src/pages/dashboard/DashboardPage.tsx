@@ -230,7 +230,7 @@ function OwnerDashboard() {
             <h3 className="font-semibold text-red-500">Stok Menipis</h3>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {lowStock.slice(0, 8).map((p: { id: string; name: string; stock: number; min_stock: number; unit: string }) => (
+            {lowStock.slice(0, 8).map((p: any) => (
               <div key={p.id} className="p-2 rounded-lg" style={{ background: 'var(--bg-primary)' }}>
                 <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                   {p.name}
@@ -259,7 +259,7 @@ function OwnerDashboard() {
               <p className="text-xs mt-1 opacity-60">Tidak ada produk dengan stok menipis</p>
             </div>
           ) : (
-            lowStockAllBranches.map((branch) => (
+            lowStockAllBranches.map((branch: any) => (
               <div key={branch.branch_id} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-color)' }}>
                 <div className="flex items-center gap-2 mb-3">
                   <GitBranch size={16} className="text-blue-500" />
@@ -271,7 +271,7 @@ function OwnerDashboard() {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {branch.products.map((p) => (
+                  {branch.products.map((p: any) => (
                     <div key={p.id} className="p-2 rounded-lg" style={{ background: 'var(--bg-primary)' }}>
                       <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                         {p.name}
@@ -413,7 +413,7 @@ function StaffDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {lowStock.map((p: { id: string; name: string; stock: number; min_stock: number; unit: string }) => (
+              {lowStock.map((p: any) => (
                 <div
                   key={p.id}
                   className="flex items-center justify-between p-3 rounded-xl"
