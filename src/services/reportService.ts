@@ -162,3 +162,52 @@ export async function getLowStockProducts(_branchId: string) {
     (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
   )
 }
+
+// Ambil stok menipis per cabang (untuk manager)
+export async function getLowStockAllBranches(): Promise<{
+  branch_id: string
+  branch_name: string
+  products: { id: string; name: string; stock: number; min_stock: number; unit: string }[]
+}[]> {
+  const { data: branches } = await supabase.from('branches').select('id, name').eq('is_active', true).order('name')
+
+  const { data: allProducts } = await supabase
+    .from('products')
+    .select('id, name, stock, min_stock, unit, branch_id, branch:branches(name)')
+    .order('stock')
+    .limit(200)
+
+  const results: { branch_id: string; branch_name: string; products: { id: string; name: string; stock: number; min_stock: number; unit: string }[] }[] = []
+
+  // Group by branch
+  const branchMap = new Map<string, { branch_name: string; products: { id: string; name: string; stock: number; min_stock: number; unit: string }[] }>()
+
+  ;(allProducts ?? []).forEach((p: any) => {
+    const bid = p.branch_id
+    const bname = Array.isArray(p.branch) ? p.branch[0]?.name : p.branch?.name ?? 'Unknown'
+    if (p.stock <= p.min_stock) {
+      const entry = branchMap.get(bid) ?? { branch_name: bname, products: [] as { id: string; name: string; stock: number; min_stock: number; unit: string }[] }
+      entry.products.push({ id: p.id, name: p.name, stock: p.stock, min_stock: p.min_stock, unit: p.unit })
+      branchMap.set(bid, entry)
+    }
+  })
+
+  branchMap.forEach((val, key) => {
+    results.push({ branch_id: key, branch_name: val.branch_name, products: val.products })
+  })
+
+  results.sort((a, b) => a.branch_name.localeCompare(b.branch_name))
+  return results
+}
+
+// Ambil stok menipis untuk cabang tertentu
+export async function getLowStockByBranch(branchId: string) {
+  const { data } = await supabase
+    .from('products')
+    .select('id, name, stock, min_stock, unit')
+    .order('stock')
+
+  return (data ?? []).filter(
+    (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
+  )
+}

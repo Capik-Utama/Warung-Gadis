@@ -1,13 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
-  Users, GitBranch, Coffee, Mic2, Tv, Clock,
+  Users, GitBranch, Coffee, Mic2, Tv, Clock, ChevronRight,
 } from 'lucide-react'
 import { StatCard } from '@/components/ui/Card'
+import { Modal } from '@/components/ui/Modal'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts } from '@/services/reportService'
+import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -43,11 +44,19 @@ function OwnerDashboard() {
     queryFn: () => getLowStockProducts(branchId),
   })
 
+  const { data: lowStockAllBranches = [] } = useQuery({
+    queryKey: ['low-stock-all-branches'],
+    queryFn: getLowStockAllBranches,
+    refetchInterval: 60_000,
+  })
+
   const { data: recentTransactions = [] } = useQuery({
     queryKey: ['recent-trx', branchId],
     queryFn: () => fetchTransactions(branchId),
     refetchInterval: 15_000,
   })
+
+  const [stockModal, setStockModal] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -85,12 +94,22 @@ function OwnerDashboard() {
           icon={<ShoppingCart size={20} className="text-purple-600" />}
           iconBg="bg-purple-50"
         />
-        <StatCard
-          title="Stok Menipis"
-          value={lowStock.length}
-          icon={<AlertTriangle size={20} className="text-red-500" />}
-          iconBg="bg-red-50"
-        />
+        <div
+          className="stat-card cursor-pointer transition-all hover:shadow-md"
+          onClick={() => setStockModal(true)}
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-red-50">
+              <AlertTriangle size={20} className="text-red-500" />
+            </div>
+            <ChevronRight size={16} className="text-red-300" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{lowStock.length}</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Stok Menipis</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Ketuk untuk detail</p>
+          </div>
+        </div>
       </div>
 
       {/* Chart */}
@@ -228,13 +247,69 @@ function OwnerDashboard() {
           </div>
         </div>
       )}
+
+      {/* ─── STOK MENIPIS MODAL (Manager) ─── */}
+      <Modal
+        isOpen={stockModal}
+        onClose={() => setStockModal(false)}
+        title="Stok Menipis — Semua Cabang"
+        size="lg"
+      >
+        <div className="max-h-[60vh] overflow-y-auto space-y-4">
+          {lowStockAllBranches.length === 0 ? (
+            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
+              <Package size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Semua stok aman</p>
+              <p className="text-xs mt-1 opacity-60">Tidak ada produk dengan stok menipis</p>
+            </div>
+          ) : (
+            lowStockAllBranches.map((branch) => (
+              <div key={branch.branch_id} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <GitBranch size={16} className="text-blue-500" />
+                  <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {branch.branch_name}
+                  </h4>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">
+                    {branch.products.length} produk
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {branch.products.map((p) => (
+                    <div key={p.id} className="p-2 rounded-lg" style={{ background: 'var(--bg-primary)' }}>
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                        {p.name}
+                      </p>
+                      <p className="text-xs text-red-500 font-semibold">
+                        Stok: {p.stock} {p.unit}
+                      </p>
+                      {p.stock <= 0 && (
+                        <span className="text-[10px] px-1 rounded bg-red-100 text-red-600">HABIS</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }
 
 // Staff dashboard
 function StaffDashboard() {
-  const { user } = useAuthStore()
+  const { user, selectedBranch } = useAuthStore()
+  const branchId = selectedBranch?.id ?? ''
+
+  const { data: lowStock = [] } = useQuery({
+    queryKey: ['low-stock-staff', branchId],
+    queryFn: () => getLowStockProducts(branchId),
+    refetchInterval: 30_000,
+  })
+
+  const [stockModal, setStockModal] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -257,6 +332,26 @@ function StaffDashboard() {
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Hutang</p>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cek hutang pelanggan</p>
         </a>
+      </div>
+
+      {/* Stok Menipis Card */}
+      <div
+        className="card p-5 border-l-4 border-red-500 cursor-pointer transition-all hover:shadow-md"
+        onClick={() => setStockModal(true)}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} className="text-red-500" />
+            <h3 className="font-semibold text-red-500">STOK MENIPIS</h3>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-lg font-bold text-red-500">{lowStock.length}</span>
+            <ChevronRight size={16} className="text-red-300" />
+          </div>
+        </div>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Ketuk untuk lihat detail di cabang ini
+        </p>
       </div>
 
       {/* Warung banner */}
@@ -290,6 +385,54 @@ function StaffDashboard() {
           </p>
         </div>
       </div>
+
+      {/* ─── STOK MENIPIS MODAL (Staff) ─── */}
+      <Modal
+        isOpen={stockModal}
+        onClose={() => setStockModal(false)}
+        title={`Stok Menipis — ${selectedBranch?.name ?? 'Cabang'}`}
+        size="md"
+      >
+        <div className="max-h-[60vh] overflow-y-auto space-y-2">
+          {lowStock.length === 0 ? (
+            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
+              <Package size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Semua stok aman</p>
+              <p className="text-xs mt-1 opacity-60">Tidak ada produk dengan stok menipis</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {lowStock.map((p: { id: string; name: string; stock: number; min_stock: number; unit: string }) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between p-3 rounded-xl"
+                  style={{
+                    background: p.stock <= 0 ? 'rgba(239,68,68,0.05)' : 'var(--bg-primary)',
+                    border: `1px solid ${p.stock <= 0 ? '#fca5a5' : 'var(--border-color)'}`,
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                      {p.name}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Min: {p.min_stock} {p.unit}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p className={`text-sm font-bold ${p.stock <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
+                      {p.stock} {p.unit}
+                    </p>
+                    {p.stock <= 0 && (
+                      <span className="text-[10px] px-1.5 rounded bg-red-100 text-red-600 font-semibold">HABIS</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }
