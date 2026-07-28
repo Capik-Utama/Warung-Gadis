@@ -308,13 +308,6 @@ function StaffDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title">Halo, {user?.name}! 👋</h1>
-        <p className="page-subtitle">
-          {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
-      </div>
-
       {/* Quick menu */}
       <div className="grid grid-cols-2 gap-4">
         <a href="/kasir" className="card card-hover p-6 text-center cursor-pointer">
