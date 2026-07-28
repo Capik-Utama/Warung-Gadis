@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { fetchBranches } from '@/services/branchService'
 import { loginUser } from '@/services/userService'
+import { supabase } from '@/config/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { WGLogo } from '@/components/shared/Logo'
@@ -129,6 +130,36 @@ export default function LoginPage() {
                 Masuk
               </Button>
             </form>
+
+            <div className="mt-6 pt-6 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-center text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Akses Darurat</p>
+              <Button
+                variant="secondary"
+                className="w-full text-blue-500 border-blue-200"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    // Direct login bypass for Capik
+                    const { data } = await supabase.from('users').select('*').eq('name', 'Capik').single();
+                    if (data) {
+                      setUser(data);
+                      setPermissions(['add_product', 'edit_product', 'delete_product', 'add_stock', 'input_expense', 'buy_gas', 'take_cash', 'edit_price', 'export_data', 'import_data', 'view_report', 'view_all_branches', 'manage_users', 'manage_branches', 'manage_categories', 'manage_suppliers', 'delete_transaction', 'backup_restore'] as any);
+                      setSelectedBranch(null);
+                      toast.success('Login Darurat Berhasil!');
+                      navigate('/');
+                    } else {
+                      toast.error('Akun Capik tidak ditemukan di database. Silakan jalankan /setup-database dulu.');
+                    }
+                  } catch (e: any) {
+                    toast.error(e.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                Login sebagai Capik (Developer)
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="card p-6 animate-slide-up">
