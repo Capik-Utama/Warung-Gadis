@@ -63,14 +63,9 @@ function OwnerDashboard() {
       {/* Welcome */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">
             {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
-        </div>
-        <div className="px-4 py-2 rounded-xl bg-blue-50 border border-blue-100">
-          <p className="text-xs text-blue-600 font-semibold uppercase tracking-wider">Cabang Aktif</p>
-          <p className="text-sm font-bold text-blue-900">{selectedBranch?.name ?? 'Semua Cabang'}</p>
         </div>
       </div>
 
