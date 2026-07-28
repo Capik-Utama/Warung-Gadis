@@ -10,7 +10,7 @@ interface CartStore {
   removeItem: (productId: string) => void
   setQty: (productId: string, qty: number) => void
   updateQty: (productId: string, qty: number) => void
-  toggleCheckbox: (productId: string) => void
+  toggleCheckbox: (productId: string, product: Product, price: number) => void
   selectAll: () => void
   deselectAll: () => void
   setCustomer: (name: string, phone: string) => void
@@ -55,8 +55,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
             quantity: 1,
             unit_price: price,
             subtotal: price,
-            selected: false, // belum diceklis
-            checked: false,  // untuk flow baru
+            selected: true,
+            checked: false,
           },
         ],
       }))
@@ -94,12 +94,34 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }))
   },
 
-  toggleCheckbox: (productId) =>
-    set((s) => ({
-      items: s.items.map((i) =>
-        i.product.id === productId ? { ...i, checked: !i.checked } : i,
-      ),
-    })),
+  // Ceklis produk: jika belum ada di cart, tambah dulu lalu centang
+  toggleCheckbox: (productId, product, price) => {
+    const state = get()
+    const existing = state.items.find((i) => i.product.id === productId)
+    if (!existing) {
+      // Produk belum ada di cart, tambahkan dengan checked=true
+      set((s) => ({
+        items: [
+          ...s.items,
+          {
+            product,
+            quantity: 1,
+            unit_price: price,
+            subtotal: price,
+            selected: true,
+            checked: true,
+          },
+        ],
+      }))
+    } else {
+      // Produk sudah ada, toggle checked
+      set((s) => ({
+        items: s.items.map((i) =>
+          i.product.id === productId ? { ...i, checked: !i.checked } : i,
+        ),
+      }))
+    }
+  },
 
   toggleSelect: (productId: string) =>
     set((s) => ({

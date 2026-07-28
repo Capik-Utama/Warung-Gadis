@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
@@ -37,9 +37,6 @@ export default function KasirPage() {
   const [debtPhone, setDebtPhone] = useState('')
   const [debtAddress, setDebtAddress] = useState('')
 
-  // Qty inputs untuk flow baru
-  const [qtyInputs, setQtyInputs] = useState<Record<string, string>>({})
-
   const branchId = selectedBranch?.id ?? ''
 
   const { data: categories = [] } = useQuery({
@@ -59,7 +56,7 @@ export default function KasirPage() {
     enabled: !!branchId,
   })
 
-  // Flatten pending items dari semua transaksi
+  // Flatten pending items
   const pendingItems = useMemo(() => {
     const flat: {
       id: string
@@ -70,7 +67,6 @@ export default function KasirPage() {
       unit_price: number
       subtotal: number
       code: string
-      checked: boolean
     }[] = []
     pendingTransactions.forEach((trx) => {
       (trx.items ?? []).forEach((item: TransactionItem) => {
@@ -84,7 +80,6 @@ export default function KasirPage() {
             unit_price: item.unit_price,
             subtotal: item.subtotal,
             code: trx.code,
-            checked: false,
           })
         }
       })
@@ -92,7 +87,7 @@ export default function KasirPage() {
     return flat
   }, [pendingTransactions])
 
-  // Filter products berdasarkan tab aktif
+  // Filter products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
@@ -110,16 +105,21 @@ export default function KasirPage() {
 
   // ─── ACTIONS ───
 
-  const handleQtyChange = (productId: string, value: string) => {
-    setQtyInputs((prev) => ({ ...prev, [productId]: value }))
-  }
+  // Ceklis produk: langsung pakai store method yang sudah handle add+toggle
+  const handleCheckProduct = useCallback((product: Product) => {
+    cart.toggleCheckbox(product.id, product, product.base_price)
+  }, [cart])
 
-  const handleCheckProduct = (product: Product) => {
-    cart.toggleCheckbox(product.id)
-  }
+  // Set qty dari input field
+  const handleQtyChange = useCallback((productId: string, value: string) => {
+    const num = parseInt(value, 10)
+    if (num >= 0) {
+      cart.setQty(productId, num)
+    }
+  }, [cart])
 
-  // OTW PENDING: buat transaksi baru dengan status pending
-  const handleOtwPending = () => {
+  // OTW PENDING
+  const handleOtwPending = useCallback(() => {
     if (checkedCount === 0) {
       toast.error('Ceklis minimal 1 produk')
       return
@@ -146,19 +146,16 @@ export default function KasirPage() {
         loading: 'Memproses pending...',
         success: () => {
           toast.success(`${checkedCount} item masuk pending!`)
-          // Reset qty inputs dan cart
-          setQtyInputs({})
-          cart.deselectAll()
           setPayModal(false)
           setDebtModal(false)
           refetchPending()
           qc.invalidateQueries({ queryKey: ['products'] })
-          return 'Success'
+          return 'Berhasil'
         },
         error: (e: Error) => e.message,
       },
     )
-  }
+  }, [checkedCount, checkedItems, user, branchId, refetchPending, qc])
 
   // BAYAR
   const payMutation = useMutation({
@@ -183,8 +180,6 @@ export default function KasirPage() {
     },
     onSuccess: () => {
       toast.success('Pembayaran berhasil!')
-      setQtyInputs({})
-      cart.deselectAll()
       cart.clearCart()
       setPayModal(false)
       setPaidAmount('')
@@ -231,8 +226,6 @@ export default function KasirPage() {
     },
     onSuccess: () => {
       toast.success('Hutang berhasil dicatat!')
-      setQtyInputs({})
-      cart.deselectAll()
       cart.clearCart()
       setDebtModal(false)
       setDebtName('')
@@ -249,7 +242,7 @@ export default function KasirPage() {
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* TOP: Search bar */}
+      {/* Search bar */}
       <div className="flex gap-2">
         <Input
           placeholder="Cari produk..."
@@ -260,7 +253,7 @@ export default function KasirPage() {
         />
       </div>
 
-      {/* TAB BAR: PENDING | Semua | Kategori */}
+      {/* TAB BAR */}
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         <TabButton
           active={activeTab === 'pending'}
@@ -292,7 +285,6 @@ export default function KasirPage() {
       {/* CONTENT AREA */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab === 'pending' ? (
-          /* ─── PENDING VIEW ─── */
           <PendingView
             items={pendingItems}
             onRefetch={refetchPending}
@@ -304,20 +296,105 @@ export default function KasirPage() {
             }}
           />
         ) : (
-          /* ─── PRODUCT LIST VIEW ─── */
-          <ProductList
-            products={filteredProducts}
-            loading={loadingProducts}
-            checkedItems={checkedItems}
-            qtyInputs={qtyInputs}
-            onCheck={handleCheckProduct}
-            onQtyChange={handleQtyChange}
-            isChecked={(productId) => cart.isChecked(productId)}
-          />
+          <div className="space-y-1">
+            {loadingProducts ? (
+              <div className="flex justify-center py-16">
+                <span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} />
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+                Produk tidak ditemukan
+              </div>
+            ) : (
+              filteredProducts.map((product) => {
+                const isChecked = cart.isChecked(product.id)
+                const cartItem = cart.items.find((i) => i.product.id === product.id)
+                const qty = cartItem?.quantity ?? 1
+                const subtotal = qty * product.base_price
+
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors"
+                    style={{
+                      background: isChecked ? 'rgba(37,99,235,0.05)' : 'var(--bg-card)',
+                      border: `1px solid ${isChecked ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <button
+                      onClick={() => handleCheckProduct(product)}
+                      style={{ color: isChecked ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                      className="flex-shrink-0"
+                    >
+                      {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
+                    </button>
+
+                    {/* Product info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                        {product.name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+                          {formatCurrency(product.base_price)}
+                        </span>
+                        {product.stock <= product.min_stock && product.stock > 0 && (
+                          <span className="text-[10px] px-1 rounded bg-amber-100 text-amber-600">menipis</span>
+                        )}
+                        {product.stock <= 0 && (
+                          <span className="text-[10px] px-1 rounded bg-red-100 text-red-600">habis</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Qty + Subtotal */}
+                    {isChecked ? (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleQtyChange(product.id, String(Math.max(0, qty - 1)))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+                            style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <input
+                            type="number"
+                            value={String(qty)}
+                            onChange={(e) => handleQtyChange(product.id, e.target.value)}
+                            className="w-10 text-center text-sm font-bold bg-transparent border-0 outline-none"
+                            style={{ color: 'var(--text-primary)' }}
+                            min={0}
+                          />
+                          <button
+                            onClick={() => handleQtyChange(product.id, String(qty + 1))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+                            style={{ background: 'var(--accent-primary)', color: 'white' }}
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                        {subtotal > 0 && (
+                          <span className="text-xs font-bold text-green-600 w-20 text-right">
+                            {formatCurrency(subtotal)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+                        Stok: {product.stock}
+                      </span>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
         )}
       </div>
 
-      {/* BOTTOM BAR: Total + Action Buttons */}
+      {/* BOTTOM BAR */}
       {activeTab !== 'pending' && (
         <div
           className="flex-shrink-0 p-3 rounded-xl border flex flex-col gap-2"
@@ -390,7 +467,6 @@ export default function KasirPage() {
         }
       >
         <div className="space-y-4">
-          {/* Items */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
               Item ({checkedCount}):
@@ -411,7 +487,6 @@ export default function KasirPage() {
             </div>
           </div>
 
-          {/* Payment Method */}
           <div>
             <p className="label">Metode Pembayaran</p>
             <div className="grid grid-cols-3 gap-2">
@@ -571,168 +646,7 @@ function TabButton({
   )
 }
 
-function ProductList({
-  products,
-  loading,
-  checkedItems,
-  qtyInputs,
-  onCheck,
-  onQtyChange,
-  isChecked,
-}: {
-  products: Product[]
-  loading: boolean
-  checkedItems: ReturnType<typeof useCartStore.getState>['items']
-  qtyInputs: Record<string, string>
-  onCheck: (product: Product) => void
-  onQtyChange: (productId: string, value: string) => void
-  isChecked: (productId: string) => boolean
-}) {
-  // Sync qty inputs with checked items
-  const [lastCheckedCount, setLastCheckedCount] = useState(0)
-
-  React.useEffect(() => {
-    if (checkedItems.length > lastCheckedCount) {
-      // New items checked, set qty to 1 if not set
-      checkedItems.forEach((item) => {
-        if (!(item.product.id in qtyInputs)) {
-          onQtyChange(item.product.id, '1')
-        }
-      })
-    }
-    setLastCheckedCount(checkedItems.length)
-  }, [checkedItems.length])
-
-  return (
-    <div className="space-y-1">
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} />
-        </div>
-      ) : products.length === 0 ? (
-        <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
-          Produk tidak ditemukan
-        </div>
-      ) : (
-        products.map((product) => (
-          <ProductRow
-            key={product.id}
-            product={product}
-            checked={isChecked(product.id)}
-            qtyInput={qtyInputs[product.id] ?? ''}
-            onCheck={() => onCheck(product)}
-            onQtyChange={(val) => {
-              onQtyChange(product.id, val)
-              // Sync to cart store
-              const num = parseInt(val, 10)
-              if (num > 0) {
-                cart_sync_product(product.id, num, product.base_price)
-              }
-            }}
-          />
-        ))
-      )}
-    </div>
-  )
-}
-
-function ProductRow({
-  product,
-  checked,
-  qtyInput,
-  onCheck,
-  onQtyChange,
-}: {
-  product: Product
-  checked: boolean
-  qtyInput: string
-  onCheck: () => void
-  onQtyChange: (val: string) => void
-}) {
-  const qty = parseInt(qtyInput, 10) || 0
-  const subtotal = qty * product.base_price
-
-  return (
-    <div
-      className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors"
-      style={{
-        background: checked ? 'rgba(37,99,235,0.05)' : 'var(--bg-card)',
-        border: `1px solid ${checked ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
-      }}
-    >
-      {/* Checkbox */}
-      <button onClick={onCheck} style={{ color: checked ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-        {checked ? <CheckSquare size={18} /> : <Square size={18} />}
-      </button>
-
-      {/* Product info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-          {product.name}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
-            {formatCurrency(product.base_price)}
-          </span>
-          {product.stock <= product.min_stock && product.stock > 0 && (
-            <span className="text-[10px] px-1 rounded bg-amber-100 text-amber-600">menipis</span>
-          )}
-          {product.stock <= 0 && (
-            <span className="text-[10px] px-1 rounded bg-red-100 text-red-600">habis</span>
-          )}
-        </div>
-      </div>
-
-      {/* Qty input + subtotal */}
-      {checked && (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => {
-                const cur = parseInt(qtyInput, 10) || 0
-                if (cur > 1) onQtyChange(String(cur - 1))
-              }}
-              className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
-              style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-            >
-              <Minus size={12} />
-            </button>
-            <input
-              type="number"
-              value={qtyInput}
-              onChange={(e) => onQtyChange(e.target.value)}
-              className="w-10 text-center text-sm font-bold bg-transparent border-0 outline-none"
-              style={{ color: 'var(--text-primary)' }}
-              min={0}
-              placeholder="0"
-            />
-            <button
-              onClick={() => {
-                const cur = parseInt(qtyInput, 10) || 0
-                onQtyChange(String(cur + 1))
-              }}
-              className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
-              style={{ background: 'var(--accent-primary)', color: 'white' }}
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-          {subtotal > 0 && (
-            <span className="text-xs font-bold text-green-600 w-20 text-right">
-              {formatCurrency(subtotal)}
-            </span>
-          )}
-        </div>
-      )}
-
-      {!checked && (
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Stok: {product.stock}
-        </span>
-      )}
-    </div>
-  )
-}
+// ─── PENDING VIEW ───
 
 function PendingView({
   items,
@@ -750,7 +664,6 @@ function PendingView({
     unit_price: number
     subtotal: number
     code: string
-    checked: boolean
   }[]
   onRefetch: () => void
   branchId: string
@@ -759,7 +672,6 @@ function PendingView({
 }) {
   const qc = useQueryClient()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
-  const [payQty, setPayQty] = useState<Record<string, string>>({})
 
   const selectedItemsList = items.filter((i) => selectedItems.has(i.id))
   const totalSelected = selectedItemsList.reduce((s, i) => s + i.subtotal, 0)
@@ -798,7 +710,6 @@ function PendingView({
       })
       toast.success('Pembayaran pending berhasil!')
       setSelectedItems(new Set())
-      setPayQty({})
       onRefresh()
       qc.invalidateQueries({ queryKey: ['today-stats'] })
     } catch (e: any) {
@@ -848,7 +759,6 @@ function PendingView({
 
       toast.success('Hutang dari pending berhasil dicatat!')
       setSelectedItems(new Set())
-      setPayQty({})
       onRefresh()
       qc.invalidateQueries({ queryKey: ['debts'] })
     } catch (e: any) {
@@ -868,7 +778,6 @@ function PendingView({
 
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock size={16} className="text-amber-500" />
@@ -884,7 +793,6 @@ function PendingView({
         </button>
       </div>
 
-      {/* Items list */}
       <div className="space-y-1">
         {items.map((item) => (
           <div
@@ -898,6 +806,7 @@ function PendingView({
             <button
               onClick={() => toggleItem(item.id)}
               style={{ color: selectedItems.has(item.id) ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+              className="flex-shrink-0"
             >
               {selectedItems.has(item.id) ? <CheckSquare size={18} /> : <Square size={18} />}
             </button>
@@ -909,14 +818,13 @@ function PendingView({
                 {item.code} • x{item.quantity}
               </p>
             </div>
-            <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+            <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--accent-primary)' }}>
               {formatCurrency(item.subtotal)}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Bottom actions */}
       {selectedItems.size > 0 && (
         <div
           className="p-3 rounded-xl border"
@@ -968,21 +876,3 @@ function PendingView({
     </div>
   )
 }
-
-// Helper untuk sinkronisasi cart store
-let cart_sync_product: (productId: string, qty: number, price: number) => void = () => {}
-
-// Override with actual store logic at module load
-const syncImpl = (productId: string, qty: number, price: number) => {
-  const state = useCartStore.getState()
-  const existing = state.items.find((i) => i.product.id === productId)
-  if (existing) {
-    state.setQty(productId, qty)
-  } else {
-    // Find product from store's items... we need to add it
-    // Actually, let's just use addItem pattern
-    state.addItem({ id: productId } as Product, price)
-    state.setQty(productId, qty)
-  }
-}
-cart_sync_product = syncImpl
