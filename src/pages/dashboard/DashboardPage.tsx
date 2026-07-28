@@ -332,7 +332,7 @@ function StaffDashboard() {
       </div>
 
       {/* Hutang Card - Global */}
-      <Link to="/hutang" className="card p-5 border-l-4 border-amber-500 cursor-pointer transition-all hover:shadow-md" style={{ display: 'block' }}>
+      <Link to="/hutang" className="block card p-5 border-l-4 border-amber-500 cursor-pointer transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <AlertTriangle size={18} className="text-amber-500" />
