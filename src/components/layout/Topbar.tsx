@@ -70,6 +70,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     >
       <div className="flex items-center gap-3">
         {mobileMenuButton}
+        <WGLogo size={28} />
         <div>
           <h1 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
             {title}
@@ -83,7 +84,6 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       </div>
 
       <div className="flex items-center gap-3">
-        <WGLogo size={32} className="hidden md:block" />
         <button
           className="p-2 rounded-xl transition-colors hover:bg-opacity-10"
           style={{ color: 'var(--text-secondary)' }}
