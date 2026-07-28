@@ -307,7 +307,7 @@ function StaffDashboard() {
   const [stockModal, setStockModal] = useState(false)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       {/* Quick menu */}
       <div className="grid grid-cols-2 gap-4">
         <a href="/kasir" className="card card-hover p-6 text-center cursor-pointer">
