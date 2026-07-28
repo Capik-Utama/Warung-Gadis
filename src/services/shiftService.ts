@@ -109,3 +109,12 @@ export async function fetchShiftHistory(branchId: string): Promise<Shift[]> {
   if (error) throw error
   return data as Shift[]
 }
+
+export async function closeAllShifts(branchId: string): Promise<void> {
+  const { error } = await supabase
+    .from('shifts')
+    .update({ status: 'closed', check_out: new Date().toISOString() })
+    .eq('branch_id', branchId)
+    .neq('status', 'closed')
+  if (error) throw error
+}
