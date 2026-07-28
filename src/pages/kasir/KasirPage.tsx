@@ -14,7 +14,7 @@ import {
   fetchPendingTransactions,
   cancelTransactionItems,
 } from '@/services/transactionService'
-import { createDebt } from '@/services/debtService'
+import { createDebt, fetchDebtMembers } from '@/services/debtService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -52,6 +52,7 @@ export default function KasirPage() {
   const [debtName, setDebtName] = useState('')
   const [debtPhone, setDebtPhone] = useState('')
   const [debtAddress, setDebtAddress] = useState('')
+  const [showMemberSuggestions, setShowMemberSuggestions] = useState(false)
 
   const branchId = selectedBranch?.id ?? ''
   const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
@@ -60,6 +61,16 @@ export default function KasirPage() {
     queryKey: ['categories'],
     queryFn: fetchCategories,
   })
+
+  const { data: debtMembers = [] } = useQuery({
+    queryKey: ['debt-members'],
+    queryFn: fetchDebtMembers,
+  })
+
+  // Filter members based on debtName input
+  const filteredMembers = debtMembers.filter(name =>
+    name.toLowerCase().includes(debtName.toLowerCase())
+  )
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products', branchId],
@@ -607,13 +618,36 @@ export default function KasirPage() {
             </div>
           </div>
 
-          <Input
-            label="Nama Pelanggan *"
-            value={debtName}
-            onChange={(e) => setDebtName(e.target.value)}
-            placeholder="Masukkan nama pelanggan"
-            leftIcon={<User size={16} />}
-          />
+          <div className="relative">
+            <Input
+              label="Nama Pelanggan *"
+              value={debtName}
+              onChange={(e) => {
+                setDebtName(e.target.value)
+                setShowMemberSuggestions(true)
+              }}
+              onFocus={() => setShowMemberSuggestions(true)}
+              placeholder="Masukkan nama pelanggan"
+              leftIcon={<User size={16} />}
+            />
+            {showMemberSuggestions && filteredMembers.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                {filteredMembers.map((member) => (
+                  <button
+                    key={member}
+                    onClick={() => {
+                      setDebtName(member)
+                      setShowMemberSuggestions(false)
+                    }}
+                    className="w-full text-left px-3 py-2 hover:opacity-70 transition-opacity border-b"
+                    style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}
+                  >
+                    <p className="text-sm font-medium">{member}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Input
             label="Alamat"
             value={debtAddress}
@@ -626,6 +660,11 @@ export default function KasirPage() {
             onChange={(e) => setDebtPhone(e.target.value)}
             placeholder="08xxxxxxxxxx"
           />
+          {debtMembers.length > 0 && (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              💡 Tip: Ketik nama untuk melihat member yang sudah pernah berhutang sebelumnya
+            </p>
+          )}
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             Hutang bisa dilihat dan dibayar oleh semua staf di semua cabang.
           </p>

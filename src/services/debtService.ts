@@ -102,3 +102,17 @@ export async function fetchDebtPayments(debtId: string): Promise<DebtPayment[]> 
   if (error) throw error
   return data as DebtPayment[]
 }
+
+// Fetch unique customer names from debts (members)
+export async function fetchDebtMembers(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('debts')
+    .select('customer_name')
+    .neq('status', 'paid')
+    .order('customer_name')
+  if (error) throw error
+  
+  // Get unique names
+  const uniqueNames = Array.from(new Set((data as { customer_name: string }[]).map(d => d.customer_name)))
+  return uniqueNames
+}

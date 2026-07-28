@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
+import { fetchDebts } from '@/services/debtService'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 // Owner / Manager dashboard
@@ -304,7 +305,14 @@ function StaffDashboard() {
     refetchInterval: 30_000,
   })
 
+  const { data: debts = [] } = useQuery({
+    queryKey: ['debts-staff'],
+    queryFn: fetchDebts,
+    refetchInterval: 30_000,
+  })
+
   const [stockModal, setStockModal] = useState(false)
+  const totalDebt = debts.reduce((sum, d) => sum + d.remaining_amount, 0)
 
   return (
     <div className="space-y-6 pt-4">
@@ -318,9 +326,24 @@ function StaffDashboard() {
         <a href="/hutang" className="card card-hover p-6 text-center cursor-pointer">
           <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Hutang</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cek hutang pelanggan</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total: {formatCurrency(totalDebt)}</p>
         </a>
       </div>
+
+      {/* Hutang Card - Global */}
+      <a href="/hutang" className="card p-5 border-l-4 border-amber-500 cursor-pointer transition-all hover:shadow-md">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} className="text-amber-500" />
+            <h3 className="font-semibold text-amber-500">TOTAL HUTANG</h3>
+          </div>
+          <ChevronRight size={16} className="text-amber-300" />
+        </div>
+        <p className="text-2xl font-bold text-amber-600 mb-1">{formatCurrency(totalDebt)}</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {debts.length} pelanggan • Semua lokasi
+        </p>
+      </a>
 
       {/* Stok Menipis Card */}
       <div
@@ -399,20 +422,20 @@ function StaffDashboard() {
                     border: `1px solid ${p.stock <= 0 ? '#fca5a5' : 'var(--border-color)'}`,
                   }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                       {p.name}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       Min: {p.min_stock} {p.unit}
                     </p>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-2">
-                    <p className={`text-sm font-bold ${p.stock <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${p.stock <= 0 ? 'text-red-600' : 'text-amber-600'}`}>
                       {p.stock} {p.unit}
                     </p>
                     {p.stock <= 0 && (
-                      <span className="text-[10px] px-1.5 rounded bg-red-100 text-red-600 font-semibold">HABIS</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-600 font-semibold">HABIS</span>
                     )}
                   </div>
                 </div>
@@ -427,9 +450,11 @@ function StaffDashboard() {
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
+  const isStaff = user?.role === 'staff'
 
-  if (!user) return null
-
-  if (user.role === 'staff') return <StaffDashboard />
-  return <OwnerDashboard />
+  return (
+    <div>
+      {isStaff ? <StaffDashboard /> : <OwnerDashboard />}
+    </div>
+  )
 }

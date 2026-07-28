@@ -25,7 +25,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { key: 'supplier', label: 'Supplier', path: '/supplier', icon: <Truck size={18} /> },
   { key: 'stok', label: 'Stok', path: '/stok', icon: <BarChart3 size={18} /> },
   { key: 'transaksi', label: 'Transaksi', path: '/transaksi', icon: <CreditCard size={18} /> },
-  { key: 'hutang', label: 'Hutang', path: '/hutang', icon: <AlertTriangle size={18} /> },
   { key: 'laporan', label: 'Laporan', path: '/laporan', icon: <TrendingUp size={18} /> },
   { key: 'shift', label: 'Shift', path: '/shift', icon: <Clock size={18} /> },
   { key: 'user', label: 'User', path: '/user', icon: <Users size={18} /> },
