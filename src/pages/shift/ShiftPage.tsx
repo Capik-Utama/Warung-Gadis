@@ -46,6 +46,8 @@ export default function ShiftPage() {
   })
 
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
+  
+  // Staf lain yang sedang aktif di cabang yang sama
   const otherActiveUsers = allActive.filter(s => s.user_id !== user?.id)
 
   const checkInMutation = useMutation({
@@ -146,11 +148,16 @@ export default function ShiftPage() {
             <div className="flex gap-2 mt-4">
               <Button
                 variant="warning"
-                onClick={() => setHandoverModal(true)}
+                onClick={() => {
+                  // Hitung otomatis system_cash (simulasi, nantinya dari transaksi)
+                  setHandoverForm(f => ({ ...f, system_cash: activeShift.system_cash || 0 }));
+                  setHandoverModal(true);
+                }}
                 disabled={activeShift.status === 'pending_handover'}
                 icon={<LogOut size={16} />}
+                className="w-full"
               >
-                {activeShift.status === 'pending_handover' ? 'Menunggu Persetujuan...' : 'Serah Terima Shift'}
+                {activeShift.status === 'pending_handover' ? 'Menunggu Konfirmasi Pulang...' : 'PULANG (Serah Terima)'}
               </Button>
             </div>
           </div>
@@ -213,13 +220,20 @@ export default function ShiftPage() {
           <Button variant="primary" loading={handoverMutation.isPending} onClick={() => handoverMutation.mutate()}>Kirim Permintaan</Button>
         </>}>
         <div className="space-y-4">
-          <Select
-            label="Penerima Shift *"
-            value={handoverForm.to_user_id}
-            onChange={e => setHandoverForm(f => ({ ...f, to_user_id: e.target.value }))}
-            options={allActive.filter(s => s.user_id !== user?.id).map(s => ({ value: s.user_id, label: (s.user as {name:string})?.name ?? s.user_id }))}
-            placeholder="Pilih staff yang sudah masuk"
-          />
+          {otherActiveUsers.length > 0 ? (
+            <Select
+              label="Serahkan Shift Kepada (Staf yang sudah Masuk) *"
+              value={handoverForm.to_user_id}
+              onChange={e => setHandoverForm(f => ({ ...f, to_user_id: e.target.value }))}
+              options={otherActiveUsers.map(s => ({ value: s.user_id, label: (s.user as {name:string})?.name ?? s.user_id }))}
+              placeholder="Pilih penerima shift"
+            />
+          ) : (
+            <div className="p-4 rounded-xl border-2 border-dashed border-red-200 bg-red-50 text-red-600 text-sm">
+              <p className="font-bold mb-1">Peringatan: Tidak bisa Pulang</p>
+              <p>Staf pengganti harus melakukan <strong>MASUK</strong> terlebih dahulu sebelum Anda bisa melakukan serah terima (Pulang).</p>
+            </div>
+          )}
           <Input label="Kas Sistem (Rp)" type="number" value={handoverForm.system_cash} onChange={e => setHandoverForm(f => ({ ...f, system_cash: parseInt(e.target.value) || 0 }))} />
           <Input label="Kas Aktual (Rp)" type="number" value={handoverForm.actual_cash} onChange={e => setHandoverForm(f => ({ ...f, actual_cash: parseInt(e.target.value) || 0 }))} />
           <div className="p-3 rounded-xl flex justify-between" style={{ background: 'var(--bg-primary)' }}>
