@@ -67,6 +67,10 @@ const SetupDatabase = () => {
 
       if (noengError) throw noengError;
 
+      // Verify Capik account
+      const { data: verify } = await supabase.from('users').select('name, role').eq('name', 'Capik').single();
+      console.log('Verified user:', verify);
+
       // 3. Add default branches if not exist
       await supabase.from('branches').upsert([
         { id: '00000000-0000-0000-0000-000000000001', name: 'Warung Gadis Pusat', address: 'Bendungan', is_active: true },

@@ -15,7 +15,7 @@ export async function loginUser(
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .ilike('name', credentials.name)
+    .ilike('name', credentials.name.trim())
     .eq('password_hash', hash)
     .eq('is_active', true)
     .single()
