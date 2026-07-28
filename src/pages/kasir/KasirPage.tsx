@@ -12,6 +12,7 @@ import { fetchCategories } from '@/services/categoryService'
 import {
   createTransaction,
   fetchPendingTransactions,
+  cancelTransactionItems,
 } from '@/services/transactionService'
 import { createDebt } from '@/services/debtService'
 import { Button } from '@/components/ui/Button'
@@ -730,6 +731,8 @@ function PendingView({
     }
 
     try {
+      // Create a NEW transaction for the current staff processing the payment
+      // This ensures the omset goes to the current staff (userId)
       await createTransaction({
         branchId,
         userId,
@@ -742,6 +745,20 @@ function PendingView({
         paidAmount: totalSelected,
         status: 'paid',
       })
+
+      // Cancel the original pending items so they don't appear in pending anymore
+      // and won't double count stock (createTransaction already reduces stock)
+      const itemsByTrx = new Map<string, string[]>()
+      selectedItemsList.forEach(item => {
+        const list = itemsByTrx.get(item.transaction_id) || []
+        list.push(item.id)
+        itemsByTrx.set(item.transaction_id, list)
+      })
+
+      for (const [trxId, itemIds] of itemsByTrx.entries()) {
+        await cancelTransactionItems(trxId, itemIds, branchId, userId)
+      }
+
       toast.success('Pembayaran pending berhasil!')
       setSelectedItems(new Set())
       onRefresh()
@@ -770,6 +787,7 @@ function PendingView({
     const customerPhone = prompt('Nomor HP (opsional):') || ''
 
     try {
+      // Create a NEW transaction for the current staff processing the debt
       const trx = await createTransaction({
         branchId,
         userId,
@@ -790,6 +808,18 @@ function PendingView({
         customer_phone: customerPhone,
         total_amount: totalSelected,
       })
+
+      // Cancel the original pending items
+      const itemsByTrx = new Map<string, string[]>()
+      selectedItemsList.forEach(item => {
+        const list = itemsByTrx.get(item.transaction_id) || []
+        list.push(item.id)
+        itemsByTrx.set(item.transaction_id, list)
+      })
+
+      for (const [trxId, itemIds] of itemsByTrx.entries()) {
+        await cancelTransactionItems(trxId, itemIds, branchId, userId)
+      }
 
       toast.success('Hutang dari pending berhasil dicatat!')
       setSelectedItems(new Set())

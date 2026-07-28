@@ -5,59 +5,92 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
   const since = new Date()
   since.setDate(since.getDate() - days)
 
-  let query = supabase
+  // 1. Get sales
+  let trxQuery = supabase
     .from('transactions')
     .select('created_at, total_amount')
     .eq('status', 'paid')
     .gte('created_at', since.toISOString())
   
   if (branchId) {
-    query = query.eq('branch_id', branchId)
+    trxQuery = trxQuery.eq('branch_id', branchId)
   }
 
-  const { data, error } = await query.order('created_at')
+  const { data: trxData, error: trxError } = await trxQuery.order('created_at')
+  if (trxError) throw trxError
 
-  if (error) throw error
+  // 2. Get debt payments
+  let payQuery = supabase
+    .from('debt_payments')
+    .select('created_at, amount')
+    .gte('created_at', since.toISOString())
+
+  if (branchId) {
+    payQuery = payQuery.eq('branch_id', branchId)
+  }
+
+  const { data: payData, error: payError } = await payQuery.order('created_at')
+  if (payError) throw payError
 
   const grouped = new Map<string, { total: number; count: number }>()
 
-  ;(data ?? []).forEach((row: { created_at: string; total_amount: number }) => {
+  // Process sales
+  ;(trxData ?? []).forEach((row: any) => {
     const date = row.created_at.slice(0, 10)
     const existing = grouped.get(date) ?? { total: 0, count: 0 }
     grouped.set(date, { total: existing.total + row.total_amount, count: existing.count + 1 })
+  })
+
+  // Process debt payments
+  ;(payData ?? []).forEach((row: any) => {
+    const date = row.created_at.slice(0, 10)
+    const existing = grouped.get(date) ?? { total: 0, count: 0 }
+    grouped.set(date, { total: existing.total + row.amount, count: existing.count + 1 })
   })
 
   return Array.from(grouped.entries()).map(([date, v]) => ({
     date,
     total: v.total,
     transaction_count: v.count,
-  }))
+  })).sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export async function getTodayStats(branchId: string) {
   const today = new Date().toISOString().slice(0, 10)
 
-  let query = supabase
+  // Get paid transactions
+  let trxQuery = supabase
     .from('transactions')
     .select('total_amount, status')
+    .eq('status', 'paid')
     .gte('created_at', `${today}T00:00:00`)
 
   if (branchId) {
-    query = query.eq('branch_id', branchId)
+    trxQuery = trxQuery.eq('branch_id', branchId)
   }
 
-  const { data, error } = await query
+  const { data: trxData, error: trxError } = await trxQuery
+  if (trxError) throw trxError
 
-  if (error) throw error
+  // Get debt payments
+  let payQuery = supabase
+    .from('debt_payments')
+    .select('amount')
+    .gte('created_at', `${today}T00:00:00`)
 
-  const rows = data ?? []
-  const revenue = rows
-    .filter((r: { status: string; total_amount: number }) => r.status === 'paid')
-    .reduce((sum: number, r: { total_amount: number }) => sum + r.total_amount, 0)
+  if (branchId) {
+    payQuery = payQuery.eq('branch_id', branchId)
+  }
+
+  const { data: payData, error: payError } = await payQuery
+  if (payError) throw payError
+
+  const salesRevenue = (trxData ?? []).reduce((sum: number, r: any) => sum + r.total_amount, 0)
+  const debtRevenue = (payData ?? []).reduce((sum: number, r: any) => sum + r.amount, 0)
 
   return {
-    revenue,
-    transactionCount: rows.length,
+    revenue: salesRevenue + debtRevenue,
+    transactionCount: (trxData ?? []).length + (payData ?? []).length,
   }
 }
 
@@ -66,20 +99,35 @@ export async function getMonthlyRevenue(branchId: string): Promise<number> {
   start.setDate(1)
   start.setHours(0, 0, 0, 0)
 
-  let query = supabase
+  let trxQuery = supabase
     .from('transactions')
     .select('total_amount')
     .eq('status', 'paid')
     .gte('created_at', start.toISOString())
 
   if (branchId) {
-    query = query.eq('branch_id', branchId)
+    trxQuery = trxQuery.eq('branch_id', branchId)
   }
 
-  const { data, error } = await query
+  const { data: trxData, error: trxError } = await trxQuery
+  if (trxError) throw trxError
 
-  if (error) throw error
-  return (data ?? []).reduce((sum: number, r: { total_amount: number }) => sum + r.total_amount, 0)
+  let payQuery = supabase
+    .from('debt_payments')
+    .select('amount')
+    .gte('created_at', start.toISOString())
+
+  if (branchId) {
+    payQuery = payQuery.eq('branch_id', branchId)
+  }
+
+  const { data: payData, error: payError } = await payQuery
+  if (payError) throw payError
+
+  const salesRevenue = (trxData ?? []).reduce((sum: number, r: any) => sum + r.total_amount, 0)
+  const debtRevenue = (payData ?? []).reduce((sum: number, r: any) => sum + r.amount, 0)
+
+  return salesRevenue + debtRevenue
 }
 
 export async function getTopProducts(branchId: string, limit = 10): Promise<TopProduct[]> {
@@ -121,18 +169,30 @@ export async function getTopProducts(branchId: string, limit = 10): Promise<TopP
 export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
   const today = new Date().toISOString().slice(0, 10)
 
-  const { data, error } = await supabase
+  // 1. Get direct sales
+  const { data: sales, error: salesError } = await supabase
     .from('transactions')
     .select('user_id, total_amount, user:users(name)')
     .eq('branch_id', branchId)
     .eq('status', 'paid')
     .gte('created_at', `${today}T00:00:00`)
 
-  if (error) throw error
+  if (salesError) throw salesError
+
+  // 2. Get debt payments (omset for staff who received the payment)
+  const { data: debtPayments, error: debtError } = await supabase
+    .from('debt_payments')
+    .select('user_id, amount, user:users(name)')
+    .eq('branch_id', branchId)
+    .gte('created_at', `${today}T00:00:00`)
+
+  if (debtError) throw debtError
 
   const grouped = new Map<string, StaffSales>()
+
+  // Process direct sales
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(data ?? []).forEach((row: any) => {
+  ;(sales ?? []).forEach((row: any) => {
     const userName = Array.isArray(row.user) ? row.user[0]?.name : row.user?.name
     const existing = grouped.get(row.user_id) ?? {
       user_id: row.user_id,
@@ -144,6 +204,24 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
       ...existing,
       total: existing.total + row.total_amount,
       transaction_count: existing.transaction_count + 1,
+    })
+  })
+
+  // Process debt payments
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(debtPayments ?? []).forEach((row: any) => {
+    const userName = Array.isArray(row.user) ? row.user[0]?.name : row.user?.name
+    const existing = grouped.get(row.user_id) ?? {
+      user_id: row.user_id,
+      user_name: userName ?? row.user_id,
+      total: existing?.total ?? 0,
+      transaction_count: existing?.transaction_count ?? 0,
+    }
+    grouped.set(row.user_id, {
+      ...existing,
+      total: existing.total + row.amount,
+      // Note: We don't increment transaction_count for debt payments to avoid double counting 
+      // or we can count it as a "payment activity"
     })
   })
 

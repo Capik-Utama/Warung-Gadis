@@ -120,6 +120,7 @@ export async function payTransactionItems(
   itemIds: string[],
   paymentMethod: PaymentMethod,
   paidAmount: number,
+  userId: string, // Staff who receives the payment
 ): Promise<void> {
   // Mark items as paid
   const { error } = await supabase
@@ -136,12 +137,15 @@ export async function payTransactionItems(
 
   const allPaid = (items ?? []).every((i: { status: string }) => i.status === 'paid')
 
+  // Update transaction status and assign to the staff who processed the payment
+  // This ensures the turnover goes to the staff who closed the transaction
   await supabase
     .from('transactions')
     .update({
       status: allPaid ? 'paid' : 'pending',
       payment_method: paymentMethod,
       paid_amount: paidAmount,
+      user_id: userId, // Change ownership to the staff who received the payment
     })
     .eq('id', transactionId)
 }
