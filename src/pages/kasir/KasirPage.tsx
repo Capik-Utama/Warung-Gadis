@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus, Heart,
+  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus, Star,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
@@ -407,16 +407,16 @@ export default function KasirPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => toggleFavorite(product.id)}
-                          className="flex-shrink-0 transition-colors"
-                          style={{ color: favorites.includes(product.id) ? '#ef4444' : 'var(--text-muted)' }}
-                        >
-                          <Heart size={16} fill={favorites.includes(product.id) ? '#ef4444' : 'none'} />
-                        </button>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
                           Stok: {product.stock}
+                          <button
+                            onClick={() => toggleFavorite(product.id)}
+                            className="flex-shrink-0 transition-colors"
+                            style={{ color: favorites.includes(product.id) ? '#fbbf24' : 'var(--text-muted)' }}
+                          >
+                            <Star size={14} fill={favorites.includes(product.id) ? '#fbbf24' : 'none'} />
+                          </button>
                         </span>
                       </div>
                     )}
