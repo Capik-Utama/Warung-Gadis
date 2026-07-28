@@ -5,13 +5,21 @@ const SetupDatabase = () => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
+  const hashPassword = async (password: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
   const runSetup = async () => {
     setStatus('loading');
     setMessage('Menjalankan setup database...');
 
     try {
       // 1. Add Capik account (Developer)
-      const capikHash = '264e5b43c54210226f70541ac5482895bf82559bf1c41b2008fa249831ffc508';
+      const capikHash = await hashPassword('@Capik190989');
       const { error: capikError } = await supabase
         .from('users')
         .upsert({
@@ -27,7 +35,7 @@ const SetupDatabase = () => {
       if (capikError) throw capikError;
 
       // 2. Update Mbak Pia account (Manager)
-      const piaHash = 'c5ab884c9e8d55dcf6a86150ac4ecd5e37fa6161f37273e87e734b9358524f31';
+      const piaHash = await hashPassword('piaton12345');
       const { error: piaError } = await supabase
         .from('users')
         .upsert({
@@ -43,7 +51,7 @@ const SetupDatabase = () => {
       if (piaError) throw piaError;
 
       // 3. Add Noeng account (Staff)
-      const noengHash = 'ad6c74c6c5a00d18b2458341df426a0b7d5448d7d08f9b86e0758dc97e41b4a6';
+      const noengHash = await hashPassword('noeng12345');
       const { error: noengError } = await supabase
         .from('users')
         .upsert({
