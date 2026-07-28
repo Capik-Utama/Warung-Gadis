@@ -298,3 +298,5 @@ export type PermissionKey =
   | 'manage_suppliers'
   | 'delete_transaction'
   | 'backup_restore'
+  | 'close_warung'
+  | 'add_staff'

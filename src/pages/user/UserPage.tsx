@@ -100,42 +100,55 @@ export default function UserPage() {
         )}
       </div>
       <Input placeholder="Cari user..." value={search} onChange={e => setSearch(e.target.value)} leftIcon={<Search size={16} />} />
-      <div className="table-container">
-        <table className="table">
-          <thead><tr><th>Nama</th><th>Role</th><th>Telepon</th><th>Status</th><th>Aksi</th></tr></thead>
-          <tbody>
-            {isLoading ? <tr><td colSpan={5} className="text-center py-10"><span className="loading-spinner" /></td></tr> :
-              filtered.map(u => (
-                <tr key={u.id}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--accent-primary)' }}>{u.name.charAt(0).toUpperCase()}</div>
-                      <div>
-                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.address}</p>
-                      </div>
+      <div className="space-y-3">
+        {isLoading ? (
+          <div className="flex justify-center py-10"><span className="loading-spinner" /></div>
+        ) : (
+          filtered.map(u => (
+            <div key={u.id} className="card p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold" style={{ background: 'var(--accent-primary)' }}>
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
+                    <div className="flex gap-2 mt-1">
+                      {roleBadge(u.role)}
+                      {statusBadge(u.is_active ? 'active' : 'inactive')}
                     </div>
-                  </td>
-                  <td>{roleBadge(u.role)}</td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{u.phone}</td>
-                  <td>{statusBadge(u.is_active ? 'active' : 'inactive')}</td>
-                  <td>
-                    <div className="flex gap-1">
-                      {(currentUser?.role === 'developer' || (currentUser?.role === 'manager' && u.role !== 'developer')) && (
-                        <>
-                          <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500"><Pencil size={15} /></button>
-                          <button onClick={() => openPerms(u)} className="p-1.5 rounded-lg hover:bg-purple-50 text-purple-500" title="Hak akses"><Shield size={15} /></button>
-                          {u.id !== currentUser.id && u.role !== 'developer' && (
-                            <button onClick={() => setDel(u)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={15} /></button>
-                          )}
-                        </>
+                  </div>
+                </div>
+                
+                <div className="flex gap-1">
+                  {(currentUser?.role === 'developer' || (currentUser?.role === 'manager' && u.role !== 'developer')) && (
+                    <>
+                      <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100"><Pencil size={18} /></button>
+                      <button onClick={() => openPerms(u)} className="p-2 rounded-xl bg-purple-50 text-purple-500 hover:bg-purple-100" title="Hak akses"><Shield size={18} /></button>
+                      {u.id !== currentUser.id && u.role !== 'developer' && (
+                        <button onClick={() => setDel(u)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100"><Trash2 size={18} /></button>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-sm pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                <div>
+                  <p className="text-xs opacity-60" style={{ color: 'var(--text-muted)' }}>Telepon</p>
+                  <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>{u.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs opacity-60" style={{ color: 'var(--text-muted)' }}>Alamat</p>
+                  <p className="font-medium truncate" style={{ color: 'var(--text-secondary)' }}>{u.address || '-'}</p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        {filtered.length === 0 && !isLoading && (
+          <div className="text-center py-10 text-sm opacity-50">User tidak ditemukan</div>
+        )}
       </div>
 
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit User' : 'Tambah User'}
@@ -161,11 +174,15 @@ export default function UserPage() {
       {/* Permissions Modal */}
       <Modal isOpen={permModal} onClose={() => setPermModal(false)} title={`Hak Akses: ${permUser?.name}`} size="lg"
         footer={<><Button variant="secondary" onClick={() => setPermModal(false)}>Batal</Button><Button variant="primary" loading={permMutation.isPending} onClick={() => permMutation.mutate()}>Simpan</Button></>}>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-2">
           {ALL_PERMISSIONS.map(perm => (
-            <label key={perm.key} className="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-opacity-5" style={{ background: selectedPerms.includes(perm.key) ? 'rgba(37,99,235,0.05)' : 'transparent' }}>
-              <input type="checkbox" checked={selectedPerms.includes(perm.key)} onChange={() => togglePerm(perm.key)} className="w-4 h-4" />
-              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{perm.label}</span>
+            <label key={perm.key} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all" 
+              style={{ 
+                background: selectedPerms.includes(perm.key) ? 'rgba(37,99,235,0.05)' : 'var(--bg-primary)',
+                borderColor: selectedPerms.includes(perm.key) ? 'var(--accent-primary)' : 'var(--border-color)'
+              }}>
+              <input type="checkbox" checked={selectedPerms.includes(perm.key)} onChange={() => togglePerm(perm.key)} className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{perm.label}</span>
             </label>
           ))}
         </div>
