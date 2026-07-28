@@ -15,6 +15,7 @@ interface CartStore {
   setCustomer: (name: string, phone: string) => void
   setNotes: (notes: string) => void
   clearCart: () => void
+  removeSelectedItems: () => void
   getSelectedItems: () => CartItem[]
   getSelectedTotal: () => number
   getTotalItems: () => number
@@ -90,6 +91,9 @@ export const useCartStore = create<CartStore>((set, get) => ({
   setNotes: (notes) => set({ notes }),
   clearCart: () =>
     set({ items: [], customerName: '', customerPhone: '', notes: '' }),
+
+  removeSelectedItems: () =>
+    set((s) => ({ items: s.items.filter((i) => !i.selected) })),
 
   getSelectedItems: () => get().items.filter((i) => i.selected),
 

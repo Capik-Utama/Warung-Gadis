@@ -66,6 +66,36 @@ export async function createTransaction(payload: {
   const { error: itemsError } = await supabase.from('transaction_items').insert(itemRows)
   if (itemsError) throw itemsError
 
+  // PENGURANGAN STOK OTOMATIS
+  for (const item of payload.items) {
+    // 1. Ambil stok saat ini
+    const { data: product } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', item.product_id)
+      .single()
+
+    if (product) {
+      const newStock = product.stock - item.quantity
+      
+      // 2. Update stok di tabel products
+      await supabase
+        .from('products')
+        .update({ stock: newStock })
+        .eq('id', item.product_id)
+
+      // 3. Catat ke stock_logs
+      await supabase.from('stock_logs').insert({
+        product_id: item.product_id,
+        branch_id: payload.branchId,
+        type: 'sale',
+        quantity: item.quantity,
+        notes: `Penjualan ${payload.status === 'debt' ? '(Hutang)' : ''} - ${trx.code}`,
+        user_id: payload.userId
+      })
+    }
+  }
+
   return trx as Transaction
 }
 

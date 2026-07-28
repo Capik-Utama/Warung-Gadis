@@ -57,11 +57,15 @@ export default function KasirPage() {
   const payMutation = useMutation({
     mutationFn: async () => {
       if (!user || !branchId) throw new Error('Session tidak valid')
-      const items = cart.items.map((i) => ({
+      const selectedItems = cart.getSelectedItems()
+      if (selectedItems.length === 0) throw new Error('Pilih item yang ingin dibayar')
+      
+      const items = selectedItems.map((i) => ({
         product_id: i.product.id,
         quantity: i.quantity,
         unit_price: i.unit_price,
       }))
+      
       await createTransaction({
         branchId,
         userId: user.id,
@@ -73,10 +77,11 @@ export default function KasirPage() {
     },
     onSuccess: () => {
       toast.success('Transaksi berhasil!')
-      cart.clearCart()
+      cart.removeSelectedItems() // Hanya hapus item yang baru saja dibayar
       setPayModal(false)
       setPaidAmount('')
       qc.invalidateQueries({ queryKey: ['today-stats'] })
+      qc.invalidateQueries({ queryKey: ['products'] }) // Refresh stok di UI
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -85,11 +90,16 @@ export default function KasirPage() {
     mutationFn: async () => {
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
-      const items = cart.items.map((i) => ({
+      
+      const selectedItems = cart.getSelectedItems()
+      if (selectedItems.length === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
+
+      const items = selectedItems.map((i) => ({
         product_id: i.product.id,
         quantity: i.quantity,
         unit_price: i.unit_price,
       }))
+
       await createTransaction({
         branchId,
         userId: user.id,
@@ -101,10 +111,11 @@ export default function KasirPage() {
     },
     onSuccess: () => {
       toast.success('Hutang berhasil dicatat!')
-      cart.clearCart()
+      cart.removeSelectedItems() // Hanya hapus item yang dijadikan hutang
       setDebtModal(false)
       setDebtName('')
       setDebtPhone('')
+      qc.invalidateQueries({ queryKey: ['products'] }) // Refresh stok di UI
     },
     onError: (e: Error) => toast.error(e.message),
   })
