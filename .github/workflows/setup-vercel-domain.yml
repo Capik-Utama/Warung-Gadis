@@ -1,0 +1,32 @@
+name: Setup Vercel Custom Domain
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-domain:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Add domain to Vercel project
+        run: |
+          echo "Adding warung-gadis.vercel.app to Warung-Gadis project..."
+          RESPONSE=$(curl -s -X POST \
+            "https://api.vercel.com/v10/projects/Warung-Gadis/domains" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"name": "warung-gadis.vercel.app"}')
+          echo "Response: $RESPONSE"
+
+      - name: Verify domain
+        run: |
+          echo "Verifying domains on project..."
+          curl -s "https://api.vercel.com/v9/projects/Warung-Gadis/domains" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" | \
+            python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+domains = d.get('domains', [])
+print('Domains:', [dom.get('name') for dom in domains])
+" || true
