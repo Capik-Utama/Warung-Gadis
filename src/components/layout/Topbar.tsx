@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
-import { Bell, Search, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X } from 'lucide-react'
+import { Bell, Search, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { WGLogo } from '@/components/shared/Logo'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { Input } from '@/components/ui/Input'
-import { closeAllShifts } from '@/services/shiftService'
+import { Input, Select } from '@/components/ui/Input'
+import { closeAllShifts, checkInShift } from '@/services/shiftService'
 import { loginUser } from '@/services/userService'
+import { fetchBranches } from '@/services/branchService'
+import type { Branch } from '@/types'
 
 interface TopbarProps {
   title: string
@@ -18,11 +20,29 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const navigate = useNavigate()
-  const { user, selectedBranch, logout } = useAuthStore()
+  const { user, selectedBranch, logout, setSelectedBranch } = useAuthStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
+  const [showOpenModal, setShowOpenModal] = useState(false)
   const [password, setPassword] = useState('')
+  const [closeBranchId, setCloseBranchId] = useState('')
+  const [openBranchId, setOpenBranchId] = useState('')
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [branchesLoading, setBranchesLoading] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Load branches when modal opens
+  const loadBranches = async () => {
+    setBranchesLoading(true)
+    try {
+      const list = await fetchBranches()
+      setBranches(list)
+    } catch (err) {
+      toast.error('Gagal memuat daftar cabang')
+    } finally {
+      setBranchesLoading(false)
+    }
+  }
 
   const handleLogout = () => {
     logout()
@@ -30,12 +50,26 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     navigate('/login')
   }
 
+  const handleOpenCloseModal = (type: 'close' | 'open') => {
+    setCloseBranchId(selectedBranch?.id ?? '')
+    setOpenBranchId(selectedBranch?.id ?? '')
+    setPassword('')
+    loadBranches()
+    if (type === 'close') {
+      setShowCloseModal(true)
+    } else {
+      setShowOpenModal(true)
+    }
+    setShowMenu(false)
+  }
+
   const handleCloseWarung = async () => {
     if (!password) {
       toast.error('Masukkan password konfirmasi')
       return
     }
-    if (!selectedBranch) {
+    const branchId = closeBranchId || selectedBranch?.id
+    if (!branchId) {
       toast.error('Pilih cabang terlebih dahulu')
       return
     }
@@ -46,18 +80,56 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       await loginUser({ name: user?.name || '', password })
       
       // Tutup semua shift di cabang ini
-      await closeAllShifts(selectedBranch.id)
+      await closeAllShifts(branchId)
       
       toast.success('Warung Berhasil Ditutup. Semua shift telah diakhiri.')
       setShowCloseModal(false)
       setPassword('')
-      setShowMenu(false)
     } catch (err) {
       toast.error('Password salah! Tutup warung dibatalkan.')
     } finally {
       setLoading(false)
     }
   }
+
+  const handleBukaWarung = async () => {
+    if (!password) {
+      toast.error('Masukkan password konfirmasi')
+      return
+    }
+    const branchId = openBranchId || selectedBranch?.id
+    if (!branchId) {
+      toast.error('Pilih cabang terlebih dahulu')
+      return
+    }
+    if (!user) {
+      toast.error('User tidak ditemukan')
+      return
+    }
+
+    setLoading(true)
+    try {
+      // Verifikasi password
+      await loginUser({ name: user.name, password })
+      
+      // Buat shift baru (check-in)
+      await checkInShift(user.id, branchId)
+      
+      // Set cabang terpilih
+      const branch = branches.find(b => b.id === branchId)
+      if (branch) setSelectedBranch(branch)
+      
+      toast.success('Warung Berhasil Dibuka! Shift baru dimulai.')
+      setShowOpenModal(false)
+      setPassword('')
+    } catch (err) {
+      toast.error('Password salah! Buka warung dibatalkan.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const branchOptions = branches.map(b => ({ value: b.id, label: b.name }))
 
   return (
     <header
@@ -161,13 +233,22 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
                   </button>
 
                   {(user?.role === 'developer' || user?.role === 'manager') && (
-                    <button
-                      onClick={() => setShowCloseModal(true)}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-red-50 text-red-600"
-                    >
-                      <Store size={18} />
-                      <span className="text-sm font-medium">Tutup Warung</span>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleOpenCloseModal('open')}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-green-50 text-green-600"
+                      >
+                        <StoreOpen size={18} />
+                        <span className="text-sm font-medium">Buka Warung</span>
+                      </button>
+                      <button
+                        onClick={() => handleOpenCloseModal('close')}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-red-50 text-red-600"
+                      >
+                        <Store size={18} />
+                        <span className="text-sm font-medium">Tutup Warung</span>
+                      </button>
+                    </>
                   )}
 
                   <button
@@ -183,6 +264,56 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           )}
         </div>
       </div>
+
+      {/* Modal Konfirmasi Buka Warung */}
+      <Modal
+        isOpen={showOpenModal}
+        onClose={() => setShowOpenModal(false)}
+        title="Konfirmasi Buka Warung"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button variant="secondary" className="flex-1" onClick={() => setShowOpenModal(false)}>Batal</Button>
+            <Button 
+              variant="success" 
+              className="flex-1" 
+              loading={loading}
+              onClick={handleBukaWarung}
+              icon={<StoreOpen size={18} />}
+            >
+              Ya, Buka Warung
+            </Button>
+          </div>
+        }
+      >
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+            <StoreOpen size={32} />
+          </div>
+          <div>
+            <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Buka Warung</p>
+            <p className="text-sm px-4" style={{ color: 'var(--text-muted)' }}>
+              Pilih cabang dan mulai shift baru untuk membuka warung.
+            </p>
+          </div>
+          <div className="text-left space-y-3">
+            <Select
+              label="Pilih Cabang"
+              value={openBranchId}
+              onChange={(e) => setOpenBranchId(e.target.value)}
+              options={branchOptions}
+              placeholder="Pilih cabang..."
+            />
+            <Input
+              label="Konfirmasi Password Anda"
+              type="password"
+              placeholder="Masukkan password untuk melanjutkan"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+            />
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Konfirmasi Tutup Warung */}
       <Modal
@@ -211,17 +342,23 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           <div>
             <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Anda Yakin?</p>
             <p className="text-sm px-4" style={{ color: 'var(--text-muted)' }}>
-              Tindakan ini akan mengakhiri seluruh shift yang sedang aktif di cabang <strong>{selectedBranch?.name}</strong> secara paksa.
+              Tindakan ini akan mengakhiri seluruh shift yang sedang aktif di cabang secara paksa.
             </p>
           </div>
-          <div className="text-left">
+          <div className="text-left space-y-3">
+            <Select
+              label="Pilih Cabang"
+              value={closeBranchId}
+              onChange={(e) => setCloseBranchId(e.target.value)}
+              options={branchOptions}
+              placeholder="Pilih cabang..."
+            />
             <Input
               label="Konfirmasi Password Anda"
               type="password"
               placeholder="Masukkan password untuk melanjutkan"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoFocus
             />
           </div>
         </div>
