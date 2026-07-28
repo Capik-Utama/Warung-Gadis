@@ -211,11 +211,12 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(debtPayments ?? []).forEach((row: any) => {
     const userName = Array.isArray(row.user) ? row.user[0]?.name : row.user?.name
-    const existing = grouped.get(row.user_id) ?? {
+    const prev = grouped.get(row.user_id)
+    const existing = prev ?? {
       user_id: row.user_id,
       user_name: userName ?? row.user_id,
-      total: existing?.total ?? 0,
-      transaction_count: existing?.transaction_count ?? 0,
+      total: 0,
+      transaction_count: 0,
     }
     grouped.set(row.user_id, {
       ...existing,
