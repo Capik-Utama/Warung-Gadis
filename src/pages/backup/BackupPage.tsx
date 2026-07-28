@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Download, Upload, Database, AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { Download, Upload, AlertTriangle, FileSpreadsheet } from 'lucide-react'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/Button'
@@ -132,7 +132,7 @@ export default function BackupPage() {
       <div className="card p-5">
         <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tabel yang di-backup</h3>
         <div className="flex flex-wrap gap-2">
-          {TABLES.map(t => <span key={t} className="badge badge-blue">{t}</span>)}
+          {ORDERED_TABLES.map(t => <span key={t} className="badge badge-blue">{t}</span>)}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, Package, Upload, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '@/services/productService'
 import { fetchCategories } from '@/services/categoryService'
@@ -111,8 +111,6 @@ export default function ProdukPage() {
           <p className="page-subtitle">{products.length} produk terdaftar</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" icon={<Download size={16} />} size="sm">Export</Button>
-          <Button variant="secondary" icon={<Upload size={16} />} size="sm">Import</Button>
           <Button variant="primary" icon={<Plus size={16} />} onClick={openAdd}>
             Tambah
           </Button>
