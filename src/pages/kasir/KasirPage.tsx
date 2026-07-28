@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Search, Plus, Minus, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle,
+  Search, ShoppingCart, CheckSquare, Square,
+  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
@@ -17,9 +17,10 @@ import { createDebt } from '@/services/debtService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { statusBadge } from '@/components/ui/Badge'
-import { formatCurrency, formatDateTime } from '@/utils/format'
-import type { Product, PaymentMethod, Transaction } from '@/types'
+import { formatCurrency } from '@/utils/format'
+import type { Product, PaymentMethod, Transaction, TransactionItem } from '@/types'
+
+type ViewTab = 'all' | 'pending' | string // string = category id
 
 export default function KasirPage() {
   const { user, selectedBranch } = useAuthStore()
@@ -27,7 +28,7 @@ export default function KasirPage() {
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState<ViewTab>('all')
   const [payModal, setPayModal] = useState(false)
   const [debtModal, setDebtModal] = useState(false)
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
@@ -36,6 +37,9 @@ export default function KasirPage() {
   const [debtPhone, setDebtPhone] = useState('')
   const [debtAddress, setDebtAddress] = useState('')
 
+  // Qty inputs untuk flow baru
+  const [qtyInputs, setQtyInputs] = useState<Record<string, string>>({})
+
   const branchId = selectedBranch?.id ?? ''
 
   const { data: categories = [] } = useQuery({
@@ -43,43 +47,131 @@ export default function KasirPage() {
     queryFn: fetchCategories,
   })
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products', branchId],
     queryFn: () => fetchProducts(branchId),
   })
 
-  // Fetch pending transactions untuk cabang ini
+  // Fetch pending transactions
   const { data: pendingTransactions = [], refetch: refetchPending } = useQuery({
     queryKey: ['pending-transactions', branchId],
     queryFn: () => fetchPendingTransactions(branchId),
     enabled: !!branchId,
   })
 
+  // Flatten pending items dari semua transaksi
+  const pendingItems = useMemo(() => {
+    const flat: {
+      id: string
+      transaction_id: string
+      product_id: string
+      product_name: string
+      quantity: number
+      unit_price: number
+      subtotal: number
+      code: string
+      checked: boolean
+    }[] = []
+    pendingTransactions.forEach((trx) => {
+      (trx.items ?? []).forEach((item: TransactionItem) => {
+        if (item.status === 'pending') {
+          flat.push({
+            id: item.id,
+            transaction_id: item.transaction_id,
+            product_id: item.product_id,
+            product_name: item.product?.name ?? 'Unknown',
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            subtotal: item.subtotal,
+            code: trx.code,
+            checked: false,
+          })
+        }
+      })
+    })
+    return flat
+  }, [pendingTransactions])
+
+  // Filter products berdasarkan tab aktif
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
-      const matchCat = activeCategory === 'all' || p.category_id === activeCategory
-      return matchSearch && matchCat && p.is_active
+      if (activeTab === 'all') return matchSearch && p.is_active
+      if (activeTab === 'pending') return matchSearch && p.is_active
+      return matchSearch && p.category_id === activeTab && p.is_active
     })
-  }, [products, search, activeCategory])
+  }, [products, search, activeTab])
 
-  const selectedTotal = cart.getSelectedTotal()
+  const checkedTotal = cart.getCheckedTotal()
+  const checkedCount = cart.getCheckedCount()
+  const checkedItems = cart.getCheckedItems()
   const paid = parseInt(paidAmount.replace(/\D/g, ''), 10) || 0
-  const change = paid - selectedTotal
-  const selectedCount = cart.getSelectedItems().length
+  const change = paid - checkedTotal
 
+  // ─── ACTIONS ───
+
+  const handleQtyChange = (productId: string, value: string) => {
+    setQtyInputs((prev) => ({ ...prev, [productId]: value }))
+  }
+
+  const handleCheckProduct = (product: Product) => {
+    cart.toggleCheckbox(product.id)
+  }
+
+  // OTW PENDING: buat transaksi baru dengan status pending
+  const handleOtwPending = () => {
+    if (checkedCount === 0) {
+      toast.error('Ceklis minimal 1 produk')
+      return
+    }
+    if (!user || !branchId) {
+      toast.error('Session tidak valid')
+      return
+    }
+
+    const items = checkedItems.map((i) => ({
+      product_id: i.product.id,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+    }))
+
+    toast.promise(
+      createTransaction({
+        branchId,
+        userId: user.id,
+        items,
+        status: 'pending',
+      }),
+      {
+        loading: 'Memproses pending...',
+        success: () => {
+          toast.success(`${checkedCount} item masuk pending!`)
+          // Reset qty inputs dan cart
+          setQtyInputs({})
+          cart.deselectAll()
+          setPayModal(false)
+          setDebtModal(false)
+          refetchPending()
+          qc.invalidateQueries({ queryKey: ['products'] })
+          return 'Success'
+        },
+        error: (e: Error) => e.message,
+      },
+    )
+  }
+
+  // BAYAR
   const payMutation = useMutation({
     mutationFn: async () => {
       if (!user || !branchId) throw new Error('Session tidak valid')
-      const selectedItems = cart.getSelectedItems()
-      if (selectedItems.length === 0) throw new Error('Pilih item yang ingin dibayar')
-      
-      const items = selectedItems.map((i) => ({
+      if (checkedCount === 0) throw new Error('Pilih item yang ingin dibayar')
+
+      const items = checkedItems.map((i) => ({
         product_id: i.product.id,
         quantity: i.quantity,
         unit_price: i.unit_price,
       }))
-      
+
       await createTransaction({
         branchId,
         userId: user.id,
@@ -90,35 +182,35 @@ export default function KasirPage() {
       })
     },
     onSuccess: () => {
-      toast.success('Transaksi berhasil! Pembayaran dicatat.')
-      cart.removeSelectedItems()
+      toast.success('Pembayaran berhasil!')
+      setQtyInputs({})
+      cart.deselectAll()
+      cart.clearCart()
       setPayModal(false)
       setPaidAmount('')
       setPayMethod('cash')
       qc.invalidateQueries({ queryKey: ['today-stats'] })
       qc.invalidateQueries({ queryKey: ['products'] })
-      qc.invalidateQueries({ queryKey: ['pending-transactions'] })
+      refetchPending()
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
+  // HUTANG
   const debtMutation = useMutation({
     mutationFn: async () => {
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
-      
-      const selectedItems = cart.getSelectedItems()
-      if (selectedItems.length === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
+      if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
 
-      const items = selectedItems.map((i) => ({
+      const items = checkedItems.map((i) => ({
         product_id: i.product.id,
         quantity: i.quantity,
         unit_price: i.unit_price,
       }))
 
-      const totalAmount = selectedItems.reduce((s, i) => s + i.subtotal, 0)
+      const totalAmount = checkedItems.reduce((s, i) => s + i.subtotal, 0)
 
-      // 1. Buat transaksi status debt
       const trx = await createTransaction({
         branchId,
         userId: user.id,
@@ -128,7 +220,6 @@ export default function KasirPage() {
         status: 'debt',
       })
 
-      // 2. Buat record hutang
       await createDebt({
         transaction_id: trx.id,
         branch_id: branchId,
@@ -140,235 +231,146 @@ export default function KasirPage() {
     },
     onSuccess: () => {
       toast.success('Hutang berhasil dicatat!')
-      cart.removeSelectedItems()
+      setQtyInputs({})
+      cart.deselectAll()
+      cart.clearCart()
       setDebtModal(false)
       setDebtName('')
       setDebtPhone('')
       setDebtAddress('')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['debts'] })
-      qc.invalidateQueries({ queryKey: ['pending-transactions'] })
+      refetchPending()
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
-  // Auto-add item to cart ketika diklik produk
-  const handleAddProduct = (product: Product) => {
-    // Stok sudah dikurangi otomatis saat createTransaction
-    // Tapi kita perlu cek stok lokal untuk UX
-    if (product.stock <= 0) {
-      toast.error('Stok habis')
-      return
-    }
-    cart.addItem(product, product.base_price)
-  }
+  // ─── RENDER ───
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-full">
-      {/* Left: Product grid */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0">
-        {/* Search */}
+    <div className="flex flex-col gap-3 h-full">
+      {/* TOP: Search bar */}
+      <div className="flex gap-2">
         <Input
           placeholder="Cari produk..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<Search size={16} />}
+          className="flex-1"
         />
+      </div>
 
-        {/* Category filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              activeCategory === 'all' ? 'text-white' : 'opacity-60'
-            }`}
-            style={{
-              background: activeCategory === 'all' ? 'var(--accent-primary)' : 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              color: activeCategory === 'all' ? 'white' : 'var(--text-primary)',
+      {/* TAB BAR: PENDING | Semua | Kategori */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <TabButton
+          active={activeTab === 'pending'}
+          onClick={() => setActiveTab('pending')}
+          badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
+          color="amber"
+        >
+          PENDING
+        </TabButton>
+        <TabButton
+          active={activeTab === 'all'}
+          onClick={() => setActiveTab('all')}
+          color="blue"
+        >
+          Semua
+        </TabButton>
+        {categories.map((cat) => (
+          <TabButton
+            key={cat.id}
+            active={activeTab === cat.id}
+            onClick={() => setActiveTab(cat.id)}
+            color="blue"
+          >
+            {cat.name}
+          </TabButton>
+        ))}
+      </div>
+
+      {/* CONTENT AREA */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {activeTab === 'pending' ? (
+          /* ─── PENDING VIEW ─── */
+          <PendingView
+            items={pendingItems}
+            onRefetch={refetchPending}
+            branchId={branchId}
+            userId={user?.id ?? ''}
+            onRefresh={() => {
+              refetchPending()
+              qc.invalidateQueries({ queryKey: ['products'] })
             }}
-          >
-            Semua
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
-              style={{
-                background: activeCategory === cat.id ? 'var(--accent-primary)' : 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                color: activeCategory === cat.id ? 'white' : 'var(--text-primary)',
-              }}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Products grid */}
-        <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex justify-center py-16">
-              <span className="loading-spinner" style={{ color: 'var(--accent-primary)', width: 32, height: 32 }} />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAdd={() => handleAddProduct(product)}
-                />
-              ))}
-              {filteredProducts.length === 0 && (
-                <div className="col-span-full text-center py-12" style={{ color: 'var(--text-muted)' }}>
-                  Produk tidak ditemukan
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Pending Transactions Banner */}
-        {pendingTransactions.length > 0 && (
-          <div
-            className="p-3 rounded-xl border flex items-center gap-3"
-            style={{ background: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)' }}
-          >
-            <Clock size={20} className="text-amber-500 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-amber-600">
-                {pendingTransactions.length} Transaksi Pending
-              </p>
-              <p className="text-xs text-amber-500">
-                Item masih menunggu pembayaran/hutang
-              </p>
-            </div>
-            <button
-              onClick={() => refetchPending()}
-              className="text-xs px-3 py-1 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
+          />
+        ) : (
+          /* ─── PRODUCT LIST VIEW ─── */
+          <ProductList
+            products={filteredProducts}
+            loading={loadingProducts}
+            checkedItems={checkedItems}
+            qtyInputs={qtyInputs}
+            onCheck={handleCheckProduct}
+            onQtyChange={handleQtyChange}
+            isChecked={(productId) => cart.isChecked(productId)}
+          />
         )}
       </div>
 
-      {/* Right: Cart */}
-      <div
-        className="w-full lg:w-80 flex flex-col gap-3 card p-4"
-        style={{ minHeight: '400px' }}
-      >
-        <div className="flex items-center gap-2">
-          <ShoppingCart size={18} style={{ color: 'var(--accent-primary)' }} />
-          <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>
-            Keranjang ({cart.getTotalItems()})
-          </h3>
-          {cart.items.length > 0 && (
-            <button
-              onClick={cart.clearCart}
-              className="ml-auto text-xs text-red-500 hover:text-red-600"
-            >
-              Kosongkan
-            </button>
-          )}
-        </div>
-
-        {/* Select all */}
-        {cart.items.length > 0 && (
-          <div className="flex gap-2">
-            <button onClick={cart.selectAll} className="btn btn-secondary text-xs py-1 flex-1">
-              <CheckSquare size={14} /> Pilih Semua
-            </button>
-            <button onClick={cart.deselectAll} className="btn btn-secondary text-xs py-1 flex-1">
-              <Square size={14} /> Hapus Pilihan
-            </button>
-          </div>
-        )}
-
-        {/* Cart items */}
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {cart.items.length === 0 ? (
-            <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
-              <ShoppingCart size={40} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Keranjang kosong</p>
-              <p className="text-xs mt-1 opacity-60">
-                Klik produk untuk menambahkan
+      {/* BOTTOM BAR: Total + Action Buttons */}
+      {activeTab !== 'pending' && (
+        <div
+          className="flex-shrink-0 p-3 rounded-xl border flex flex-col gap-2"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {checkedCount} item dipilih
+              </span>
+              <p className="text-lg font-bold" style={{ color: 'var(--accent-primary)' }}>
+                {formatCurrency(checkedTotal)}
               </p>
             </div>
-          ) : (
-            cart.items.map((item) => (
-              <CartItemRow
-                key={item.product.id}
-                item={item}
-                onToggle={() => cart.toggleSelect(item.product.id)}
-                onInc={() => cart.updateQty(item.product.id, item.quantity + 1)}
-                onDec={() => cart.updateQty(item.product.id, item.quantity - 1)}
-                onRemove={() => cart.removeItem(item.product.id)}
-              />
-            ))
-          )}
-        </div>
-
-        {/* Total & Actions */}
-        <div
-          className="pt-3 space-y-2"
-          style={{ borderTop: '1px solid var(--border-color)' }}
-        >
-          {/* Info */}
-          {cart.items.length > 0 && (
-            <div className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
-              <div className="flex justify-between">
-                <span>Total Item:</span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{cart.getTotalItems()}</span>
+            {checkedCount === 0 && cart.items.length > 0 && (
+              <div className="flex items-center gap-1 text-xs text-amber-600">
+                <AlertCircle size={12} />
+                <span>Ceklis produk</span>
               </div>
-              <div className="flex justify-between">
-                <span>Dipilih:</span>
-                <span className="font-medium" style={{ color: 'var(--accent-primary)' }}>{selectedCount} item</span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between">
-            <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Total Terpilih
-            </span>
-            <span className="text-lg font-bold" style={{ color: 'var(--accent-primary)' }}>
-              {formatCurrency(selectedTotal)}
-            </span>
+            )}
           </div>
 
-          {selectedCount === 0 && cart.items.length > 0 && (
-            <div className="flex items-center gap-1 text-xs text-amber-600">
-              <AlertCircle size={12} />
-              <span>Ceklis item yang akan diproses</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button
-              variant="warning"
-              onClick={() => setDebtModal(true)}
-              disabled={selectedCount === 0}
-              className="text-xs"
+              variant="success"
+              className="text-xs py-2"
+              onClick={handleOtwPending}
+              disabled={checkedCount === 0}
             >
-              Hutang
+              OTW PENDING
+            </Button>
+            <Button
+              variant="danger"
+              className="text-xs py-2"
+              onClick={() => setDebtModal(true)}
+              disabled={checkedCount === 0}
+            >
+              HUTANG
             </Button>
             <Button
               variant="primary"
+              className="text-xs py-2"
               onClick={() => setPayModal(true)}
-              disabled={selectedCount === 0}
-              icon={<CreditCard size={16} />}
-              className="text-xs"
+              disabled={checkedCount === 0}
+              icon={<CreditCard size={14} />}
             >
-              Bayar
+              BAYAR
             </Button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Pay Modal */}
+      {/* ─── PAY MODAL ─── */}
       <Modal
         isOpen={payModal}
         onClose={() => setPayModal(false)}
@@ -380,7 +382,7 @@ export default function KasirPage() {
               variant="success"
               loading={payMutation.isPending}
               onClick={() => payMutation.mutate()}
-              disabled={payMethod === 'cash' && paid < selectedTotal}
+              disabled={payMethod === 'cash' && paid < checkedTotal}
             >
               Konfirmasi Bayar
             </Button>
@@ -388,12 +390,12 @@ export default function KasirPage() {
         }
       >
         <div className="space-y-4">
-          {/* Items selected */}
+          {/* Items */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Item yang akan dibayar ({selectedCount}):
+              Item ({checkedCount}):
             </p>
-            {cart.getSelectedItems().map((item) => (
+            {checkedItems.map((item) => (
               <div key={item.product.id} className="flex justify-between text-sm py-0.5">
                 <span style={{ color: 'var(--text-primary)' }}>
                   {item.product.name} x{item.quantity}
@@ -405,7 +407,7 @@ export default function KasirPage() {
             ))}
             <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
               <span style={{ color: 'var(--text-primary)' }}>Total</span>
-              <span style={{ color: 'var(--accent-primary)' }}>{formatCurrency(selectedTotal)}</span>
+              <span style={{ color: 'var(--accent-primary)' }}>{formatCurrency(checkedTotal)}</span>
             </div>
           </div>
 
@@ -414,14 +416,14 @@ export default function KasirPage() {
             <p className="label">Metode Pembayaran</p>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { key: 'cash' as const, label: 'Cash', icon: <Banknote size={20} /> },
-                { key: 'qris' as const, label: 'QRIS', icon: <QrCode size={20} /> },
-                { key: 'transfer' as const, label: 'Transfer', icon: <CreditCard size={20} /> },
+                { key: 'cash' as const, label: 'Cash', icon: <Banknote size={18} /> },
+                { key: 'qris' as const, label: 'QRIS', icon: <QrCode size={18} /> },
+                { key: 'transfer' as const, label: 'Transfer', icon: <CreditCard size={18} /> },
               ]).map((m) => (
                 <button
                   key={m.key}
                   onClick={() => setPayMethod(m.key)}
-                  className="p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all"
+                  className="p-2.5 rounded-xl border-2 flex flex-col items-center gap-1 transition-all"
                   style={{
                     borderColor: payMethod === m.key ? 'var(--accent-primary)' : 'var(--border-color)',
                     background: payMethod === m.key ? 'rgba(37,99,235,0.05)' : 'var(--bg-primary)',
@@ -444,7 +446,7 @@ export default function KasirPage() {
                 onChange={(e) => setPaidAmount(e.target.value)}
                 placeholder="0"
               />
-              {paid >= selectedTotal && (
+              {paid >= checkedTotal && (
                 <div className="flex justify-between p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Kembalian</span>
                   <span className="font-bold text-green-500">{formatCurrency(change)}</span>
@@ -455,7 +457,7 @@ export default function KasirPage() {
         </div>
       </Modal>
 
-      {/* Debt Modal */}
+      {/* ─── DEBT MODAL ─── */}
       <Modal
         isOpen={debtModal}
         onClose={() => setDebtModal(false)}
@@ -475,12 +477,11 @@ export default function KasirPage() {
         }
       >
         <div className="space-y-4">
-          {/* Items summary */}
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Item hutang ({selectedCount}):
+              Item hutang ({checkedCount}):
             </p>
-            {cart.getSelectedItems().map((item) => (
+            {checkedItems.map((item) => (
               <div key={item.product.id} className="flex justify-between text-sm py-0.5">
                 <span style={{ color: 'var(--text-primary)' }}>
                   {item.product.name} x{item.quantity}
@@ -492,11 +493,10 @@ export default function KasirPage() {
             ))}
             <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
               <span style={{ color: 'var(--text-primary)' }}>Total Hutang</span>
-              <span className="text-red-500">{formatCurrency(selectedTotal)}</span>
+              <span className="text-red-500">{formatCurrency(checkedTotal)}</span>
             </div>
           </div>
 
-          {/* Customer Info */}
           <Input
             label="Nama Pelanggan *"
             value={debtName}
@@ -517,7 +517,7 @@ export default function KasirPage() {
             placeholder="08xxxxxxxxxx"
           />
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Hutang ini bisa dilihat dan dibayar oleh semua staf di semua cabang.
+            Hutang bisa dilihat dan dibayar oleh semua staf di semua cabang.
           </p>
         </div>
       </Modal>
@@ -525,88 +525,464 @@ export default function KasirPage() {
   )
 }
 
-// Product Card
-const ProductCard: React.FC<{ product: Product; onAdd: () => void }> = ({ product, onAdd }) => (
-  <button
-    onClick={onAdd}
-    disabled={product.stock <= 0}
-    className="pos-product-card text-left relative"
-  >
-    {product.stock <= product.min_stock && product.stock > 0 && (
-      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" title="Stok menipis" />
-    )}
-    {product.stock <= 0 && (
-      <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black bg-opacity-40 text-white text-xs font-bold">
-        HABIS
-      </span>
-    )}
-    <div
-      className="w-full aspect-square rounded-xl flex items-center justify-center text-2xl"
-      style={{ background: 'var(--bg-primary)' }}
-    >
-      🛍️
-    </div>
-    <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
-      {product.name}
-    </p>
-    <p className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
-      {formatCurrency(product.base_price)}
-    </p>
-    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-      Stok: {product.stock}
-    </p>
-  </button>
-)
+// ─── COMPONENTS ───
 
-// Cart Item Row
-interface CartItemRowProps {
-  item: ReturnType<typeof useCartStore.getState>['items'][0]
-  onToggle: () => void
-  onInc: () => void
-  onDec: () => void
-  onRemove: () => void
+function TabButton({
+  children,
+  active,
+  onClick,
+  badge,
+  color,
+}: {
+  children: React.ReactNode
+  active: boolean
+  onClick: () => void
+  badge?: number
+  color: 'blue' | 'amber' | 'green' | 'red'
+}) {
+  const activeStyles: Record<string, string> = {
+    blue: 'var(--accent-primary)',
+    amber: '#f59e0b',
+    green: '#22c55e',
+    red: '#ef4444',
+  }
+  const colorVal = activeStyles[color] ?? 'var(--accent-primary)'
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5"
+      style={{
+        background: active ? colorVal : 'var(--bg-card)',
+        border: '1px solid var(--border-color)',
+        color: active ? 'white' : 'var(--text-primary)',
+      }}
+    >
+      {children}
+      {badge !== undefined && badge > 0 && (
+        <span
+          className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-white"
+          style={{ background: colorVal }}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
+  )
 }
 
-const CartItemRow: React.FC<CartItemRowProps> = ({ item, onToggle, onInc, onDec, onRemove }) => (
-  <div
-    className="flex items-center gap-2 p-2 rounded-xl transition-colors"
-    style={{
-      background: item.selected ? 'rgba(37,99,235,0.05)' : 'var(--bg-primary)',
-      border: `1px solid ${item.selected ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
-    }}
-  >
-    <button onClick={onToggle} style={{ color: item.selected ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-      {item.selected ? <CheckSquare size={18} /> : <Square size={18} />}
-    </button>
-    <div className="flex-1 min-w-0">
-      <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-        {item.product.name}
-      </p>
-      <p className="text-xs" style={{ color: 'var(--accent-primary)' }}>
-        {formatCurrency(item.subtotal)}
-      </p>
+function ProductList({
+  products,
+  loading,
+  checkedItems,
+  qtyInputs,
+  onCheck,
+  onQtyChange,
+  isChecked,
+}: {
+  products: Product[]
+  loading: boolean
+  checkedItems: ReturnType<typeof useCartStore.getState>['items']
+  qtyInputs: Record<string, string>
+  onCheck: (product: Product) => void
+  onQtyChange: (productId: string, value: string) => void
+  isChecked: (productId: string) => boolean
+}) {
+  // Sync qty inputs with checked items
+  const [lastCheckedCount, setLastCheckedCount] = useState(0)
+
+  React.useEffect(() => {
+    if (checkedItems.length > lastCheckedCount) {
+      // New items checked, set qty to 1 if not set
+      checkedItems.forEach((item) => {
+        if (!(item.product.id in qtyInputs)) {
+          onQtyChange(item.product.id, '1')
+        }
+      })
+    }
+    setLastCheckedCount(checkedItems.length)
+  }, [checkedItems.length])
+
+  return (
+    <div className="space-y-1">
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} />
+        </div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+          Produk tidak ditemukan
+        </div>
+      ) : (
+        products.map((product) => (
+          <ProductRow
+            key={product.id}
+            product={product}
+            checked={isChecked(product.id)}
+            qtyInput={qtyInputs[product.id] ?? ''}
+            onCheck={() => onCheck(product)}
+            onQtyChange={(val) => {
+              onQtyChange(product.id, val)
+              // Sync to cart store
+              const num = parseInt(val, 10)
+              if (num > 0) {
+                cart_sync_product(product.id, num, product.base_price)
+              }
+            }}
+          />
+        ))
+      )}
     </div>
-    <div className="flex items-center gap-1">
-      <button
-        onClick={onDec}
-        className="w-6 h-6 rounded-lg flex items-center justify-center"
-        style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-      >
-        <Minus size={12} />
+  )
+}
+
+function ProductRow({
+  product,
+  checked,
+  qtyInput,
+  onCheck,
+  onQtyChange,
+}: {
+  product: Product
+  checked: boolean
+  qtyInput: string
+  onCheck: () => void
+  onQtyChange: (val: string) => void
+}) {
+  const qty = parseInt(qtyInput, 10) || 0
+  const subtotal = qty * product.base_price
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors"
+      style={{
+        background: checked ? 'rgba(37,99,235,0.05)' : 'var(--bg-card)',
+        border: `1px solid ${checked ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
+      }}
+    >
+      {/* Checkbox */}
+      <button onClick={onCheck} style={{ color: checked ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
+        {checked ? <CheckSquare size={18} /> : <Square size={18} />}
       </button>
-      <span className="w-6 text-center text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-        {item.quantity}
-      </span>
-      <button
-        onClick={onInc}
-        className="w-6 h-6 rounded-lg flex items-center justify-center"
-        style={{ background: 'var(--accent-primary)', color: 'white' }}
-      >
-        <Plus size={12} />
-      </button>
+
+      {/* Product info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+          {product.name}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+            {formatCurrency(product.base_price)}
+          </span>
+          {product.stock <= product.min_stock && product.stock > 0 && (
+            <span className="text-[10px] px-1 rounded bg-amber-100 text-amber-600">menipis</span>
+          )}
+          {product.stock <= 0 && (
+            <span className="text-[10px] px-1 rounded bg-red-100 text-red-600">habis</span>
+          )}
+        </div>
+      </div>
+
+      {/* Qty input + subtotal */}
+      {checked && (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                const cur = parseInt(qtyInput, 10) || 0
+                if (cur > 1) onQtyChange(String(cur - 1))
+              }}
+              className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+            >
+              <Minus size={12} />
+            </button>
+            <input
+              type="number"
+              value={qtyInput}
+              onChange={(e) => onQtyChange(e.target.value)}
+              className="w-10 text-center text-sm font-bold bg-transparent border-0 outline-none"
+              style={{ color: 'var(--text-primary)' }}
+              min={0}
+              placeholder="0"
+            />
+            <button
+              onClick={() => {
+                const cur = parseInt(qtyInput, 10) || 0
+                onQtyChange(String(cur + 1))
+              }}
+              className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+              style={{ background: 'var(--accent-primary)', color: 'white' }}
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+          {subtotal > 0 && (
+            <span className="text-xs font-bold text-green-600 w-20 text-right">
+              {formatCurrency(subtotal)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {!checked && (
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Stok: {product.stock}
+        </span>
+      )}
     </div>
-    <button onClick={onRemove} className="text-red-400 hover:text-red-500 p-0.5">
-      <X size={14} />
-    </button>
-  </div>
-)
+  )
+}
+
+function PendingView({
+  items,
+  onRefetch,
+  branchId,
+  userId,
+  onRefresh,
+}: {
+  items: {
+    id: string
+    transaction_id: string
+    product_id: string
+    product_name: string
+    quantity: number
+    unit_price: number
+    subtotal: number
+    code: string
+    checked: boolean
+  }[]
+  onRefetch: () => void
+  branchId: string
+  userId: string
+  onRefresh: () => void
+}) {
+  const qc = useQueryClient()
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [payQty, setPayQty] = useState<Record<string, string>>({})
+
+  const selectedItemsList = items.filter((i) => selectedItems.has(i.id))
+  const totalSelected = selectedItemsList.reduce((s, i) => s + i.subtotal, 0)
+
+  const toggleItem = (id: string) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handlePayPending = async (method: PaymentMethod) => {
+    if (selectedItemsList.length === 0) {
+      toast.error('Pilih item yang ingin dibayar')
+      return
+    }
+    if (!userId) {
+      toast.error('Session tidak valid')
+      return
+    }
+
+    try {
+      await createTransaction({
+        branchId,
+        userId,
+        items: selectedItemsList.map((i) => ({
+          product_id: i.product_id,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        paymentMethod: method,
+        paidAmount: totalSelected,
+        status: 'paid',
+      })
+      toast.success('Pembayaran pending berhasil!')
+      setSelectedItems(new Set())
+      setPayQty({})
+      onRefresh()
+      qc.invalidateQueries({ queryKey: ['today-stats'] })
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal memproses pembayaran')
+    }
+  }
+
+  const handleDebtPending = async () => {
+    if (selectedItemsList.length === 0) {
+      toast.error('Pilih item yang ingin dijadikan hutang')
+      return
+    }
+    if (!userId) {
+      toast.error('Session tidak valid')
+      return
+    }
+
+    const customerName = prompt('Nama pelanggan:')
+    if (!customerName || !customerName.trim()) {
+      toast.error('Nama pelanggan wajib diisi')
+      return
+    }
+
+    const customerPhone = prompt('Nomor HP (opsional):') || ''
+
+    try {
+      const trx = await createTransaction({
+        branchId,
+        userId,
+        items: selectedItemsList.map((i) => ({
+          product_id: i.product_id,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        customerName,
+        customerPhone,
+        status: 'debt',
+      })
+
+      await createDebt({
+        transaction_id: trx.id,
+        branch_id: branchId,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        total_amount: totalSelected,
+      })
+
+      toast.success('Hutang dari pending berhasil dicatat!')
+      setSelectedItems(new Set())
+      setPayQty({})
+      onRefresh()
+      qc.invalidateQueries({ queryKey: ['debts'] })
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal mencatat hutang')
+    }
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
+        <Clock size={40} className="mx-auto mb-3 opacity-30" />
+        <p className="text-sm">Tidak ada transaksi pending</p>
+        <p className="text-xs mt-1 opacity-60">Item pending akan muncul di sini</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock size={16} className="text-amber-500" />
+          <span className="text-sm font-bold text-amber-600">
+            {items.length} item pending
+          </span>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="text-xs px-2 py-1 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {/* Items list */}
+      <div className="space-y-1">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors"
+            style={{
+              background: selectedItems.has(item.id) ? 'rgba(37,99,235,0.05)' : 'var(--bg-card)',
+              border: `1px solid ${selectedItems.has(item.id) ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
+            }}
+          >
+            <button
+              onClick={() => toggleItem(item.id)}
+              style={{ color: selectedItems.has(item.id) ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+            >
+              {selectedItems.has(item.id) ? <CheckSquare size={18} /> : <Square size={18} />}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                {item.product_name}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {item.code} • x{item.quantity}
+              </p>
+            </div>
+            <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+              {formatCurrency(item.subtotal)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom actions */}
+      {selectedItems.size > 0 && (
+        <div
+          className="p-3 rounded-xl border"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+        >
+          <div className="flex justify-between mb-2">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {selectedItems.size} item dipilih
+            </span>
+            <span className="text-base font-bold" style={{ color: 'var(--accent-primary)' }}>
+              {formatCurrency(totalSelected)}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="primary"
+              className="text-xs py-2"
+              onClick={() => handlePayPending('cash')}
+            >
+              <Banknote size={14} className="inline mr-1" />
+              Bayar Cash
+            </Button>
+            <Button
+              variant="danger"
+              className="text-xs py-2"
+              onClick={handleDebtPending}
+            >
+              HUTANG
+            </Button>
+            <Button
+              variant="secondary"
+              className="text-xs py-2"
+              onClick={() => handlePayPending('qris')}
+            >
+              <QrCode size={14} className="inline mr-1" />
+              Bayar QRIS
+            </Button>
+            <Button
+              variant="secondary"
+              className="text-xs py-2"
+              onClick={() => handlePayPending('transfer')}
+            >
+              <CreditCard size={14} className="inline mr-1" />
+              Transfer
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Helper untuk sinkronisasi cart store
+let cart_sync_product: (productId: string, qty: number, price: number) => void = () => {}
+
+// Override with actual store logic at module load
+const syncImpl = (productId: string, qty: number, price: number) => {
+  const state = useCartStore.getState()
+  const existing = state.items.find((i) => i.product.id === productId)
+  if (existing) {
+    state.setQty(productId, qty)
+  } else {
+    // Find product from store's items... we need to add it
+    // Actually, let's just use addItem pattern
+    state.addItem({ id: productId } as Product, price)
+    state.setQty(productId, qty)
+  }
+}
+cart_sync_product = syncImpl

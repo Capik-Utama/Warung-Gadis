@@ -8,8 +8,9 @@ interface CartStore {
   notes: string
   addItem: (product: Product, price: number) => void
   removeItem: (productId: string) => void
+  setQty: (productId: string, qty: number) => void
   updateQty: (productId: string, qty: number) => void
-  toggleSelect: (productId: string) => void
+  toggleCheckbox: (productId: string) => void
   selectAll: () => void
   deselectAll: () => void
   setCustomer: (name: string, phone: string) => void
@@ -19,6 +20,10 @@ interface CartStore {
   getSelectedItems: () => CartItem[]
   getSelectedTotal: () => number
   getTotalItems: () => number
+  getCheckedItems: () => CartItem[]
+  getCheckedTotal: () => number
+  getCheckedCount: () => number
+  isChecked: (productId: string) => boolean
 }
 
 export const useCartStore = create<CartStore>((set, get) => ({
@@ -50,7 +55,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
             quantity: 1,
             unit_price: price,
             subtotal: price,
-            selected: true,
+            selected: false, // belum diceklis
+            checked: false,  // untuk flow baru
           },
         ],
       }))
@@ -59,6 +65,20 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   removeItem: (productId) =>
     set((s) => ({ items: s.items.filter((i) => i.product.id !== productId) })),
+
+  setQty: (productId, qty) => {
+    if (qty <= 0) {
+      get().removeItem(productId)
+      return
+    }
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.product.id === productId
+          ? { ...i, quantity: qty, subtotal: qty * i.unit_price }
+          : i,
+      ),
+    }))
+  },
 
   updateQty: (productId, qty) => {
     if (qty <= 0) {
@@ -74,7 +94,14 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }))
   },
 
-  toggleSelect: (productId) =>
+  toggleCheckbox: (productId) =>
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.product.id === productId ? { ...i, checked: !i.checked } : i,
+      ),
+    })),
+
+  toggleSelect: (productId: string) =>
     set((s) => ({
       items: s.items.map((i) =>
         i.product.id === productId ? { ...i, selected: !i.selected } : i,
@@ -82,10 +109,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
     })),
 
   selectAll: () =>
-    set((s) => ({ items: s.items.map((i) => ({ ...i, selected: true })) })),
+    set((s) => ({ items: s.items.map((i) => ({ ...i, checked: true, selected: true })) })),
 
   deselectAll: () =>
-    set((s) => ({ items: s.items.map((i) => ({ ...i, selected: false })) })),
+    set((s) => ({ items: s.items.map((i) => ({ ...i, checked: false, selected: false })) })),
 
   setCustomer: (name, phone) => set({ customerName: name, customerPhone: phone }),
   setNotes: (notes) => set({ notes }),
@@ -93,14 +120,25 @@ export const useCartStore = create<CartStore>((set, get) => ({
     set({ items: [], customerName: '', customerPhone: '', notes: '' }),
 
   removeSelectedItems: () =>
-    set((s) => ({ items: s.items.filter((i) => !i.selected) })),
+    set((s) => ({ items: s.items.filter((i) => !i.checked) })),
 
-  getSelectedItems: () => get().items.filter((i) => i.selected),
+  getSelectedItems: () => get().getCheckedItems(),
 
-  getSelectedTotal: () =>
+  getCheckedItems: () => get().items.filter((i) => i.checked),
+
+  getSelectedTotal: () => get().getCheckedTotal(),
+
+  getCheckedTotal: () =>
     get()
-      .items.filter((i) => i.selected)
+      .items.filter((i) => i.checked)
       .reduce((sum, i) => sum + i.subtotal, 0),
 
+  getCheckedCount: () => get().items.filter((i) => i.checked).length,
+
   getTotalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
+
+  isChecked: (productId: string) => {
+    const item = get().items.find((i) => i.product.id === productId)
+    return item?.checked ?? false
+  },
 }))

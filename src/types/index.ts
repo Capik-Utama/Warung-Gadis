@@ -244,6 +244,7 @@ export interface CartItem {
   unit_price: number
   subtotal: number
   selected: boolean
+  checked: boolean
 }
 
 export interface Cart {
