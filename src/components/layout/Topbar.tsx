@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Bell, Search, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { WGLogo } from '@/components/shared/Logo'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/Button'
@@ -81,7 +82,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        <WGLogo size={32} className="hidden md:block" />
         <button
           className="p-2 rounded-xl transition-colors hover:bg-opacity-10"
           style={{ color: 'var(--text-secondary)' }}

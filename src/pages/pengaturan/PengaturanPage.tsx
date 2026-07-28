@@ -26,7 +26,7 @@ export default function PengaturanPage() {
         <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
           <p>Versi: 1.0.0</p>
           <p>Tagline: Ngopi • Nongkrong • Karaoke • Nobar</p>
-          <p>© 2025 Warung Gadis. All rights reserved.</p>
+          <p>©2026 Warung Gadis - By Capik</p>
         </div>
       </div>
     </div>
