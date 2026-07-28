@@ -10,7 +10,7 @@ const SetupDatabase = () => {
     setMessage('Menjalankan setup database...');
 
     try {
-      // 1. Add Capik account
+      // 1. Add Capik account (Developer)
       const capikHash = '264e5b43c54210226f70541ac5482895bf82559bf1c41b2008fa249831ffc508';
       const { error: capikError } = await supabase
         .from('users')
@@ -26,22 +26,38 @@ const SetupDatabase = () => {
 
       if (capikError) throw capikError;
 
-      // 2. Update Mama Pia account
-      const mamaHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
-      const { error: mamaError } = await supabase
+      // 2. Update Mbak Pia account (Manager)
+      const piaHash = 'c5ab884c9e8d55dcf6a86150ac4ecd5e37fa6161f37273e87e734b9358524f31';
+      const { error: piaError } = await supabase
         .from('users')
         .upsert({
           id: '00000000-0000-0000-0000-000000000010',
-          name: 'Mama Pia',
+          name: 'Mbak Pia',
           phone: '087733662600',
-          address: 'Bendungan',
+          address: 'Wangon Mas',
           role: 'manager',
-          branch_id: '00000000-0000-0000-0000-000000000001',
-          password_hash: mamaHash,
+          password_hash: piaHash,
           is_active: true
         });
 
-      if (mamaError) throw mamaError;
+      if (piaError) throw piaError;
+
+      // 3. Add Noeng account (Staff)
+      const noengHash = 'ad6c74c6c5a00d18b2458341df426a0b7d5448d7d08f9b86e0758dc97e41b4a6';
+      const { error: noengError } = await supabase
+        .from('users')
+        .upsert({
+          id: '00000000-0000-0000-0000-000000000011',
+          name: 'Noeng',
+          phone: '08123456789',
+          address: 'sungi',
+          role: 'staff',
+          branch_id: '00000000-0000-0000-0000-000000000001',
+          password_hash: noengHash,
+          is_active: true
+        });
+
+      if (noengError) throw noengError;
 
       // 3. Add default branches if not exist
       await supabase.from('branches').upsert([
