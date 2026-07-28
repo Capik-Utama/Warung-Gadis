@@ -8,6 +8,7 @@ import { applyTheme } from '@/config/theme'
 import { MainLayout } from '@/components/layout/MainLayout'
 
 import LoginPage from '@/pages/auth/LoginPage'
+import SetupDatabase from '@/pages/SetupDatabase'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import KasirPage from '@/pages/kasir/KasirPage'
 import ProdukPage from '@/pages/produk/ProdukPage'
@@ -44,6 +45,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/setup-database" element={<SetupDatabase />} />
           <Route path="/" element={<RequireAuth><MainLayout /></RequireAuth>}>
             <Route index element={<DashboardPage />} />
             <Route path="kasir" element={<KasirPage />} />
