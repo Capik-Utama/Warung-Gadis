@@ -159,6 +159,7 @@ export interface Debt {
   branch_id: string
   branch?: Branch
   customer_name: string
+  customer_address: string | null
   customer_phone: string | null
   total_amount: number
   paid_amount: number

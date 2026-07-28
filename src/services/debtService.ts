@@ -12,11 +12,33 @@ export async function fetchDebts(): Promise<Debt[]> {
   return data as Debt[]
 }
 
+export async function fetchDebtsAll(): Promise<Debt[]> {
+  const { data, error } = await supabase
+    .from('debts')
+    .select('*, branch:branches(id,name), transaction:transactions(id,code)')
+    .neq('status', 'paid')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data as Debt[]
+}
+
+export async function fetchPaidDebts(): Promise<Debt[]> {
+  const { data, error } = await supabase
+    .from('debts')
+    .select('*, branch:branches(id,name), transaction:transactions(id,code)')
+    .eq('status', 'paid')
+    .order('updated_at', { ascending: false })
+    .limit(100)
+  if (error) throw error
+  return data as Debt[]
+}
+
 export async function createDebt(payload: {
   transaction_id: string
   branch_id: string
   customer_name: string
-  customer_phone: string
+  customer_address?: string
+  customer_phone?: string
   total_amount: number
 }): Promise<Debt> {
   const { data, error } = await supabase

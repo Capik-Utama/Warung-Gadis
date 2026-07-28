@@ -1,20 +1,25 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Search, Plus, Minus, Trash2, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, X,
+  Search, Plus, Minus, ShoppingCart, CheckSquare, Square,
+  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
 import { fetchProducts } from '@/services/productService'
 import { fetchCategories } from '@/services/categoryService'
-import { createTransaction, markTransactionAsDebt } from '@/services/transactionService'
+import {
+  createTransaction,
+  fetchPendingTransactions,
+} from '@/services/transactionService'
+import { createDebt } from '@/services/debtService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { formatCurrency } from '@/utils/format'
-import type { Product, PaymentMethod } from '@/types'
+import { statusBadge } from '@/components/ui/Badge'
+import { formatCurrency, formatDateTime } from '@/utils/format'
+import type { Product, PaymentMethod, Transaction } from '@/types'
 
 export default function KasirPage() {
   const { user, selectedBranch } = useAuthStore()
@@ -29,6 +34,7 @@ export default function KasirPage() {
   const [paidAmount, setPaidAmount] = useState('')
   const [debtName, setDebtName] = useState('')
   const [debtPhone, setDebtPhone] = useState('')
+  const [debtAddress, setDebtAddress] = useState('')
 
   const branchId = selectedBranch?.id ?? ''
 
@@ -42,6 +48,13 @@ export default function KasirPage() {
     queryFn: () => fetchProducts(branchId),
   })
 
+  // Fetch pending transactions untuk cabang ini
+  const { data: pendingTransactions = [], refetch: refetchPending } = useQuery({
+    queryKey: ['pending-transactions', branchId],
+    queryFn: () => fetchPendingTransactions(branchId),
+    enabled: !!branchId,
+  })
+
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
@@ -53,6 +66,7 @@ export default function KasirPage() {
   const selectedTotal = cart.getSelectedTotal()
   const paid = parseInt(paidAmount.replace(/\D/g, ''), 10) || 0
   const change = paid - selectedTotal
+  const selectedCount = cart.getSelectedItems().length
 
   const payMutation = useMutation({
     mutationFn: async () => {
@@ -76,12 +90,14 @@ export default function KasirPage() {
       })
     },
     onSuccess: () => {
-      toast.success('Transaksi berhasil!')
-      cart.removeSelectedItems() // Hanya hapus item yang baru saja dibayar
+      toast.success('Transaksi berhasil! Pembayaran dicatat.')
+      cart.removeSelectedItems()
       setPayModal(false)
       setPaidAmount('')
+      setPayMethod('cash')
       qc.invalidateQueries({ queryKey: ['today-stats'] })
-      qc.invalidateQueries({ queryKey: ['products'] }) // Refresh stok di UI
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['pending-transactions'] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -100,7 +116,10 @@ export default function KasirPage() {
         unit_price: i.unit_price,
       }))
 
-      await createTransaction({
+      const totalAmount = selectedItems.reduce((s, i) => s + i.subtotal, 0)
+
+      // 1. Buat transaksi status debt
+      const trx = await createTransaction({
         branchId,
         userId: user.id,
         items,
@@ -108,17 +127,41 @@ export default function KasirPage() {
         customerPhone: debtPhone,
         status: 'debt',
       })
+
+      // 2. Buat record hutang
+      await createDebt({
+        transaction_id: trx.id,
+        branch_id: branchId,
+        customer_name: debtName,
+        customer_address: debtAddress || undefined,
+        customer_phone: debtPhone,
+        total_amount: totalAmount,
+      })
     },
     onSuccess: () => {
       toast.success('Hutang berhasil dicatat!')
-      cart.removeSelectedItems() // Hanya hapus item yang dijadikan hutang
+      cart.removeSelectedItems()
       setDebtModal(false)
       setDebtName('')
       setDebtPhone('')
-      qc.invalidateQueries({ queryKey: ['products'] }) // Refresh stok di UI
+      setDebtAddress('')
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['debts'] })
+      qc.invalidateQueries({ queryKey: ['pending-transactions'] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
+
+  // Auto-add item to cart ketika diklik produk
+  const handleAddProduct = (product: Product) => {
+    // Stok sudah dikurangi otomatis saat createTransaction
+    // Tapi kita perlu cek stok lokal untuk UX
+    if (product.stock <= 0) {
+      toast.error('Stok habis')
+      return
+    }
+    cart.addItem(product, product.base_price)
+  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">
@@ -175,7 +218,7 @@ export default function KasirPage() {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onAdd={() => cart.addItem(product, product.base_price)}
+                  onAdd={() => handleAddProduct(product)}
                 />
               ))}
               {filteredProducts.length === 0 && (
@@ -186,6 +229,30 @@ export default function KasirPage() {
             </div>
           )}
         </div>
+
+        {/* Pending Transactions Banner */}
+        {pendingTransactions.length > 0 && (
+          <div
+            className="p-3 rounded-xl border flex items-center gap-3"
+            style={{ background: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)' }}
+          >
+            <Clock size={20} className="text-amber-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-600">
+                {pendingTransactions.length} Transaksi Pending
+              </p>
+              <p className="text-xs text-amber-500">
+                Item masih menunggu pembayaran/hutang
+              </p>
+            </div>
+            <button
+              onClick={() => refetchPending()}
+              className="text-xs px-3 py-1 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right: Cart */}
@@ -226,6 +293,9 @@ export default function KasirPage() {
             <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
               <ShoppingCart size={40} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm">Keranjang kosong</p>
+              <p className="text-xs mt-1 opacity-60">
+                Klik produk untuk menambahkan
+              </p>
             </div>
           ) : (
             cart.items.map((item) => (
@@ -241,12 +311,26 @@ export default function KasirPage() {
           )}
         </div>
 
-        {/* Total */}
+        {/* Total & Actions */}
         <div
-          className="pt-3"
+          className="pt-3 space-y-2"
           style={{ borderTop: '1px solid var(--border-color)' }}
         >
-          <div className="flex justify-between mb-3">
+          {/* Info */}
+          {cart.items.length > 0 && (
+            <div className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
+              <div className="flex justify-between">
+                <span>Total Item:</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{cart.getTotalItems()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Dipilih:</span>
+                <span className="font-medium" style={{ color: 'var(--accent-primary)' }}>{selectedCount} item</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between">
             <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>
               Total Terpilih
             </span>
@@ -255,11 +339,18 @@ export default function KasirPage() {
             </span>
           </div>
 
+          {selectedCount === 0 && cart.items.length > 0 && (
+            <div className="flex items-center gap-1 text-xs text-amber-600">
+              <AlertCircle size={12} />
+              <span>Ceklis item yang akan diproses</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <Button
-              variant="secondary"
+              variant="warning"
               onClick={() => setDebtModal(true)}
-              disabled={cart.items.length === 0}
+              disabled={selectedCount === 0}
               className="text-xs"
             >
               Hutang
@@ -267,7 +358,7 @@ export default function KasirPage() {
             <Button
               variant="primary"
               onClick={() => setPayModal(true)}
-              disabled={cart.getSelectedItems().length === 0}
+              disabled={selectedCount === 0}
               icon={<CreditCard size={16} />}
               className="text-xs"
             >
@@ -286,32 +377,47 @@ export default function KasirPage() {
           <>
             <Button variant="secondary" onClick={() => setPayModal(false)}>Batal</Button>
             <Button
-              variant="primary"
+              variant="success"
               loading={payMutation.isPending}
               onClick={() => payMutation.mutate()}
               disabled={payMethod === 'cash' && paid < selectedTotal}
             >
-              Konfirmasi
+              Konfirmasi Bayar
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <div>
-            <p className="label">Total Pembayaran</p>
-            <p className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
-              {formatCurrency(selectedTotal)}
+          {/* Items selected */}
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Item yang akan dibayar ({selectedCount}):
             </p>
+            {cart.getSelectedItems().map((item) => (
+              <div key={item.product.id} className="flex justify-between text-sm py-0.5">
+                <span style={{ color: 'var(--text-primary)' }}>
+                  {item.product.name} x{item.quantity}
+                </span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {formatCurrency(item.subtotal)}
+                </span>
+              </div>
+            ))}
+            <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Total</span>
+              <span style={{ color: 'var(--accent-primary)' }}>{formatCurrency(selectedTotal)}</span>
+            </div>
           </div>
 
+          {/* Payment Method */}
           <div>
             <p className="label">Metode Pembayaran</p>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { key: 'cash', label: 'Tunai', icon: <Banknote size={20} /> },
-                { key: 'qris', label: 'QRIS', icon: <QrCode size={20} /> },
-                { key: 'transfer', label: 'Transfer', icon: <CreditCard size={20} /> },
-              ] as const).map((m) => (
+                { key: 'cash' as const, label: 'Cash', icon: <Banknote size={20} /> },
+                { key: 'qris' as const, label: 'QRIS', icon: <QrCode size={20} /> },
+                { key: 'transfer' as const, label: 'Transfer', icon: <CreditCard size={20} /> },
+              ]).map((m) => (
                 <button
                   key={m.key}
                   onClick={() => setPayMethod(m.key)}
@@ -361,6 +467,7 @@ export default function KasirPage() {
               variant="danger"
               loading={debtMutation.isPending}
               onClick={() => debtMutation.mutate()}
+              disabled={!debtName.trim()}
             >
               Jadikan Hutang
             </Button>
@@ -368,16 +475,40 @@ export default function KasirPage() {
         }
       >
         <div className="space-y-4">
-          <div className="flex justify-between p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Total Hutang</span>
-            <span className="font-bold text-red-500">{formatCurrency(cart.items.reduce((s, i) => s + i.subtotal, 0))}</span>
+          {/* Items summary */}
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Item hutang ({selectedCount}):
+            </p>
+            {cart.getSelectedItems().map((item) => (
+              <div key={item.product.id} className="flex justify-between text-sm py-0.5">
+                <span style={{ color: 'var(--text-primary)' }}>
+                  {item.product.name} x{item.quantity}
+                </span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {formatCurrency(item.subtotal)}
+                </span>
+              </div>
+            ))}
+            <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Total Hutang</span>
+              <span className="text-red-500">{formatCurrency(selectedTotal)}</span>
+            </div>
           </div>
+
+          {/* Customer Info */}
           <Input
             label="Nama Pelanggan *"
             value={debtName}
             onChange={(e) => setDebtName(e.target.value)}
-            placeholder="Nama pelanggan"
+            placeholder="Masukkan nama pelanggan"
             leftIcon={<User size={16} />}
+          />
+          <Input
+            label="Alamat"
+            value={debtAddress}
+            onChange={(e) => setDebtAddress(e.target.value)}
+            placeholder="Alamat lengkap pelanggan"
           />
           <Input
             label="Nomor HP (Opsional)"
@@ -385,6 +516,9 @@ export default function KasirPage() {
             onChange={(e) => setDebtPhone(e.target.value)}
             placeholder="08xxxxxxxxxx"
           />
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Hutang ini bisa dilihat dan dibayar oleh semua staf di semua cabang.
+          </p>
         </div>
       </Modal>
     </div>
@@ -395,13 +529,13 @@ export default function KasirPage() {
 const ProductCard: React.FC<{ product: Product; onAdd: () => void }> = ({ product, onAdd }) => (
   <button
     onClick={onAdd}
-    disabled={product.stock === 0}
+    disabled={product.stock <= 0}
     className="pos-product-card text-left relative"
   >
     {product.stock <= product.min_stock && product.stock > 0 && (
       <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" title="Stok menipis" />
     )}
-    {product.stock === 0 && (
+    {product.stock <= 0 && (
       <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black bg-opacity-40 text-white text-xs font-bold">
         HABIS
       </span>

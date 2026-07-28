@@ -18,6 +18,22 @@ export async function fetchTransactions(branchId: string): Promise<Transaction[]
   return data as Transaction[]
 }
 
+export async function fetchPendingTransactions(branchId: string): Promise<Transaction[]> {
+  let query = supabase
+    .from('transactions')
+    .select('*, items:transaction_items(*, product:products(id,name,unit))')
+    .eq('status', 'pending')
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data as Transaction[]
+}
+
 export async function createTransaction(payload: {
   branchId: string
   userId: string
@@ -66,7 +82,7 @@ export async function createTransaction(payload: {
   const { error: itemsError } = await supabase.from('transaction_items').insert(itemRows)
   if (itemsError) throw itemsError
 
-  // PENGURANGAN STOK OTOMATIS
+  // PENGURANGAN STOK OTOMATIS untuk semua status (pending, paid, debt)
   for (const item of payload.items) {
     // 1. Ambil stok saat ini
     const { data: product } = await supabase
@@ -78,10 +94,10 @@ export async function createTransaction(payload: {
     if (product) {
       const newStock = product.stock - item.quantity
       
-      // 2. Update stok di tabel products
+      // 2. Update stok di tabel products (bisa negatif jika stock terbatas)
       await supabase
         .from('products')
-        .update({ stock: newStock })
+        .update({ stock: Math.max(0, newStock) })
         .eq('id', item.product_id)
 
       // 3. Catat ke stock_logs
@@ -90,7 +106,7 @@ export async function createTransaction(payload: {
         branch_id: payload.branchId,
         type: 'sale',
         quantity: item.quantity,
-        notes: `Penjualan ${payload.status === 'debt' ? '(Hutang)' : ''} - ${trx.code}`,
+        notes: `Penjualan ${payload.status === 'debt' ? '(Hutang)' : payload.status === 'pending' ? '(Pending)' : ''} - ${trx.code}`,
         user_id: payload.userId
       })
     }
@@ -134,10 +150,15 @@ export async function markTransactionAsDebt(
   transactionId: string,
   customerName: string,
   customerPhone: string,
+  customerAddress?: string,
 ): Promise<void> {
   const { error } = await supabase
     .from('transactions')
-    .update({ status: 'debt', customer_name: customerName, customer_phone: customerPhone })
+    .update({ 
+      status: 'debt', 
+      customer_name: customerName, 
+      customer_phone: customerPhone 
+    })
     .eq('id', transactionId)
   if (error) throw error
 
@@ -146,6 +167,69 @@ export async function markTransactionAsDebt(
     .update({ status: 'debt' })
     .eq('transaction_id', transactionId)
     .neq('status', 'paid')
+}
+
+export async function cancelTransactionItems(
+  transactionId: string,
+  itemIds: string[],
+  branchId: string,
+  userId: string,
+): Promise<void> {
+  // Mark items as cancelled
+  const { error } = await supabase
+    .from('transaction_items')
+    .update({ status: 'cancelled' })
+    .in('id', itemIds)
+  if (error) throw error
+
+  // KEMBALIKAN STOK
+  for (const itemId of itemIds) {
+    const { data: item } = await supabase
+      .from('transaction_items')
+      .select('product_id, quantity')
+      .eq('id', itemId)
+      .single()
+
+    if (item) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('stock')
+        .eq('id', item.product_id)
+        .single()
+
+      if (product) {
+        const newStock = product.stock + item.quantity
+        await supabase
+          .from('products')
+          .update({ stock: newStock })
+          .eq('id', item.product_id)
+
+        await supabase.from('stock_logs').insert({
+          product_id: item.product_id,
+          branch_id: branchId,
+          type: 'adjustment',
+          quantity: item.quantity,
+          notes: `Pengembalian stok - item dibatalkan`,
+          user_id: userId
+        })
+      }
+    }
+  }
+
+  // Check if all items cancelled → update transaction status
+  const { data: items } = await supabase
+    .from('transaction_items')
+    .select('status')
+    .eq('transaction_id', transactionId)
+
+  const allCancelled = (items ?? []).every((i: { status: string }) => i.status === 'cancelled')
+  const hasActive = (items ?? []).some((i: { status: string }) => i.status !== 'cancelled' && i.status !== 'paid')
+
+  if (allCancelled) {
+    await supabase.from('transactions').update({ status: 'cancelled' }).eq('id', transactionId)
+  } else if (!hasActive) {
+    await supabase.from('transactions').update({ status: 'paid' }).eq('id', transactionId)
+  }
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
