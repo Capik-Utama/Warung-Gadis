@@ -178,8 +178,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/')}
-          className="p-2 rounded-xl transition-colors hover:bg-opacity-10"
-          style={{ color: 'var(--text-secondary)' }}
+          className="p-2 rounded-xl transition-all hover:shadow-soft border"
+          style={{ color: 'var(--text-secondary)', background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}
           title="Beranda"
         >
           <Home size={18} />
