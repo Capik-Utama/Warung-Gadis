@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { DollarSign, MapPinned, ChevronDown, ChevronUp, User } from 'lucide-react'
+import { DollarSign, MapPinned, ChevronDown, ChevronUp, User, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchDebts, fetchPaidDebts, payDebt, fetchDebtPayments } from '@/services/debtService'
 import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
 import { statusBadge } from '@/components/ui/Badge'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
@@ -21,8 +20,7 @@ interface GroupedDebt {
 export default function HutangPage() {
   const { user, selectedBranch } = useAuthStore()
   const qc = useQueryClient()
-  const [payModal, setPayModal] = useState(false)
-  const [selected, setSelected] = useState<Debt | null>(null)
+  const [payingDebtId, setPayingDebtId] = useState<string | null>(null)
   const [payAmount, setPayAmount] = useState('')
   const [payNotes, setPayNotes] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -78,16 +76,16 @@ export default function HutangPage() {
   }
 
   const payMutation = useMutation({
-    mutationFn: () => {
-      if (!selected || !user) throw new Error('Invalid session')
+    mutationFn: ({ debt }: { debt: Debt }) => {
+      if (!user) throw new Error('Invalid session')
       const amount = parseInt(payAmount.replace(/\D/g, ''), 10)
       if (!amount) throw new Error('Masukkan jumlah bayar')
-      if (amount > selected.remaining_amount) throw new Error('Jumlah melebihi sisa hutang')
+      if (amount > debt.remaining_amount) throw new Error('Jumlah melebihi sisa hutang')
       return payDebt(
-        selected.id,
+        debt.id,
         amount,
         user.id,
-        selectedBranch?.id ?? selected.branch_id,
+        selectedBranch?.id ?? debt.branch_id,
         payNotes,
       )
     },
@@ -95,16 +93,23 @@ export default function HutangPage() {
       toast.success('Pembayaran dicatat')
       qc.invalidateQueries({ queryKey: ['debts'] })
       qc.invalidateQueries({ queryKey: ['debts-paid'] })
-      setPayModal(false)
+      setPayingDebtId(null)
       setPayAmount('')
       setPayNotes('')
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
-  const openPay = (debt: Debt) => {
-    setSelected(debt)
-    setPayModal(true)
+  const togglePay = (debt: Debt) => {
+    if (payingDebtId === debt.id) {
+      setPayingDebtId(null)
+      setPayAmount('')
+      setPayNotes('')
+    } else {
+      setPayingDebtId(debt.id)
+      setPayAmount('')
+      setPayNotes('')
+    }
   }
 
   const toggleGroup = (name: string) => {
@@ -329,15 +334,82 @@ export default function HutangPage() {
                         )}
 
                         {debt.status !== 'paid' && (
-                          <Button
-                            variant="success"
-                            size="sm"
-                            className="w-full"
-                            icon={<DollarSign size={14} />}
-                            onClick={() => openPay(debt)}
-                          >
-                            Bayar Hutang
-                          </Button>
+                          <>
+                            {payingDebtId !== debt.id ? (
+                              <Button
+                                variant="success"
+                                size="sm"
+                                className="w-full"
+                                icon={<DollarSign size={14} />}
+                                onClick={() => togglePay(debt)}
+                              >
+                                Bayar Hutang
+                              </Button>
+                            ) : (
+                              <div
+                                className="rounded-xl p-3 space-y-2"
+                                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}
+                              >
+                                <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                                  Sisa: <span className="text-red-500">{formatCurrency(debt.remaining_amount)}</span>
+                                </p>
+                                <div className="relative">
+                                  <span
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold"
+                                    style={{ color: 'var(--text-muted)' }}
+                                  >
+                                    Rp
+                                  </span>
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    value={payAmount}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/\D/g, '')
+                                      setPayAmount(val ? parseInt(val).toLocaleString('id-ID') : '')
+                                    }}
+                                    className="w-full pl-9 pr-4 py-2 rounded-lg border font-bold text-base focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    style={{
+                                      background: 'var(--bg-card)',
+                                      borderColor: 'var(--border-color)',
+                                      color: 'var(--text-primary)',
+                                    }}
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <input
+                                  type="text"
+                                  value={payNotes}
+                                  onChange={(e) => setPayNotes(e.target.value)}
+                                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                  style={{
+                                    background: 'var(--bg-card)',
+                                    borderColor: 'var(--border-color)',
+                                    color: 'var(--text-primary)',
+                                  }}
+                                  placeholder="Catatan (opsional)"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => togglePay(debt)}
+                                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-sm font-medium transition-colors"
+                                    style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
+                                  >
+                                    <X size={14} /> Batal
+                                  </button>
+                                  <button
+                                    onClick={() => payMutation.mutate({ debt })}
+                                    disabled={payMutation.isPending}
+                                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-60"
+                                    style={{ background: 'var(--accent-primary)' }}
+                                  >
+                                    <Check size={14} />
+                                    {payMutation.isPending ? 'Menyimpan...' : 'Simpan'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     ))}
@@ -348,82 +420,6 @@ export default function HutangPage() {
           ))}
         </div>
       )}
-
-      {/* Pay Modal */}
-      <Modal
-        isOpen={payModal}
-        onClose={() => setPayModal(false)}
-        title="Bayar Hutang"
-      >
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Pelanggan</p>
-            <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selected?.customer_name}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs px-2 py-1 rounded-lg bg-blue-100 text-blue-600 font-medium">
-                {selected?.branch?.name}
-              </span>
-              <span className="text-xs px-2 py-1 rounded-lg bg-purple-100 text-purple-600 font-medium">
-                Staf: {selected?.transaction?.user?.name}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[10px] mb-1 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Sisa Hutang</p>
-              <p className="font-bold text-red-500">{formatCurrency(selected?.remaining_amount ?? 0)}</p>
-            </div>
-            <div className="p-3 rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[10px] mb-1 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total Awal</p>
-              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(selected?.total_amount ?? 0)}</p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Jumlah Bayar</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-400">Rp</span>
-                <input
-                  type="text"
-                  value={payAmount}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '')
-                    setPayAmount(val ? parseInt(val).toLocaleString('id-ID') : '')
-                  }}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border font-bold text-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Catatan (Opsional)</label>
-              <textarea
-                value={payNotes}
-                onChange={(e) => setPayNotes(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none h-20"
-                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                placeholder="Tambahkan keterangan pembayaran..."
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setPayModal(false)}>Batal</Button>
-            <Button 
-              variant="primary" 
-              className="flex-1" 
-              onClick={() => payMutation.mutate()}
-              loading={payMutation.isPending}
-            >
-              Simpan Pembayaran
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }
