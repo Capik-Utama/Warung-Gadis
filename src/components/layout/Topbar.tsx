@@ -157,22 +157,22 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           <WGLogo size={30} />
         </div>
         <div>
-          <h1 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
             {title}
+            {isStaffReadOnly && (
+              <button
+                type="button"
+                onClick={() => navigate('/shift')}
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700"
+              >
+                (Read Only)
+              </button>
+            )}
           </h1>
           {selectedBranch && (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {selectedBranch.name}
             </p>
-          )}
-          {isStaffReadOnly && (
-            <button
-              type="button"
-              onClick={() => navigate('/shift')}
-              className="mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700"
-            >
-              Belum Masuk Shift • Read Only
-            </button>
           )}
         </div>
       </div>
