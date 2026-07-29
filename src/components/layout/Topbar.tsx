@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, Search, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
+import { Bell, Home, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { WGLogo } from '@/components/shared/Logo'
 import { useNavigate } from 'react-router-dom'
@@ -177,10 +177,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
 
       <div className="flex items-center gap-3">
         <button
+          onClick={() => navigate('/')}
           className="p-2 rounded-xl transition-colors hover:bg-opacity-10"
           style={{ color: 'var(--text-secondary)' }}
+          title="Beranda"
         >
-          <Search size={18} />
+          <Home size={18} />
         </button>
         
         {/* Navigasi Cepat Dropdown */}
