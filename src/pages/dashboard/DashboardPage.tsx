@@ -330,20 +330,7 @@ function StaffDashboard() {
         </a>
       </div>
 
-      {/* Hutang Card - Global */}
-      <a href="/hutang" className="card p-5 border-l-4 border-amber-500 cursor-pointer transition-all hover:shadow-md">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={18} className="text-amber-500" />
-            <h3 className="font-semibold text-amber-500">TOTAL HUTANG</h3>
-          </div>
-          <ChevronRight size={16} className="text-amber-300" />
-        </div>
-        <p className="text-2xl font-bold text-amber-600 mb-1">{formatCurrency(totalDebt)}</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {debts.length} pelanggan • Semua lokasi
-        </p>
-      </a>
+
 
       {/* Stok Menipis Card */}
       <div
