@@ -3,12 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, LogIn, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { checkInShift, getActiveShift, autoHandover, getAllActiveShifts, fetchShiftHistory } from '@/services/shiftService'
-import { fetchUsers } from '@/services/userService'
 import { fetchBranches } from '@/services/branchService'
 import { Button } from '@/components/ui/Button'
-import { Input, Select } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { formatCurrency, formatDateTime } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import type { Shift } from '@/types'
 
@@ -19,7 +18,6 @@ export default function ShiftPage() {
   const [checkInBranchId, setCheckInBranchId] = useState(branchId)
 
   const [handoverModal, setHandoverModal] = useState(false)
-  const [handoverForm, setHandoverForm] = useState({ to_user_id: '', system_cash: 0, actual_cash: 0, notes: '' })
   const [replaceUserId, setReplaceUserId] = useState('')
 
   const { data: activeShift } = useQuery({
@@ -41,7 +39,6 @@ export default function ShiftPage() {
     enabled: !!branchId,
   })
 
-  const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
   const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
 
   useEffect(() => {
@@ -55,7 +52,7 @@ export default function ShiftPage() {
       setSelectedBranch(activeShift.branch)
     }
   }, [selectedBranch, activeShift, setSelectedBranch])
-  
+
   // Staf lain yang sedang aktif di cabang yang sama
   const otherActiveUsers = allActive.filter(s => s.user_id !== user?.id)
 
@@ -85,16 +82,20 @@ export default function ShiftPage() {
         fromUserId: user.id,
         toUserId: replaceUserId,
         branchId,
-        systemCash: handoverForm.system_cash,
-        actualCash: handoverForm.actual_cash,
-        notes: handoverForm.notes,
+        systemCash: activeShift.system_cash || 0,
+        actualCash: activeShift.system_cash || 0,
+        notes: '',
       })
     },
-    onSuccess: () => { toast.success('Shift berhasil diserahkan, tanggung jawab berpindah!'); qc.invalidateQueries({ queryKey: ['active-shift'] }); qc.invalidateQueries({ queryKey: ['all-active-shifts'] }); setHandoverModal(false); setReplaceUserId('') },
+    onSuccess: () => {
+      toast.success('Shift berhasil diserahkan, tanggung jawab berpindah!')
+      qc.invalidateQueries({ queryKey: ['active-shift'] })
+      qc.invalidateQueries({ queryKey: ['all-active-shifts'] })
+      setHandoverModal(false)
+      setReplaceUserId('')
+    },
     onError: (e: Error) => toast.error(e.message),
   })
-
-  const diff = handoverForm.actual_cash - handoverForm.system_cash
 
   return (
     <div className="space-y-6">
@@ -123,10 +124,7 @@ export default function ShiftPage() {
             <div className="flex gap-2 mt-4">
               <Button
                 variant="warning"
-                onClick={() => {
-                  setHandoverForm(f => ({ ...f, system_cash: activeShift.system_cash || 0 }));
-                  setHandoverModal(true);
-                }}
+                onClick={() => setHandoverModal(true)}
                 icon={<LogOut size={16} />}
                 className="w-full"
               >
@@ -195,22 +193,22 @@ export default function ShiftPage() {
         </div>
       </div>
 
-      {/* Handover Modal — Pilih Pengganti */}
-      <Modal isOpen={handoverModal} onClose={() => setHandoverModal(false)} title="Pulang & Serahkan Tanggung Jawab" size="lg"
-        footer={<>
+      {/* Handover Modal — Hanya Pilih Pengganti */}
+      <Modal isOpen={handoverModal} onClose={() => setHandoverModal(false)} title="Pilih Pengganti" size="sm"
+        footer={<React.Fragment>
           <Button variant="secondary" onClick={() => { setHandoverModal(false); setReplaceUserId('') }}>Batal</Button>
           <Button variant="danger" loading={handoverMutation.isPending} onClick={() => handoverMutation.mutate()}>
-            Ya, Pulang Sekarang
+            Ya, Pulang
           </Button>
-        </>}>
+        </React.Fragment>}>
         <div className="space-y-4">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Pilih staf pengganti. Tanggung jawab shift akan langsung berpindah.
+            Pilih staf pengganti untuk menerima tanggung jawab shift Anda.
           </p>
 
           {otherActiveUsers.length > 0 ? (
             <Select
-              label="Pilih Staf Pengganti *"
+              label="Staf Pengganti *"
               value={replaceUserId}
               onChange={e => setReplaceUserId(e.target.value)}
               options={otherActiveUsers.map(s => ({ value: s.user_id, label: (s.user as {name:string})?.name ?? s.user_id }))}
@@ -218,20 +216,10 @@ export default function ShiftPage() {
             />
           ) : (
             <div className="p-4 rounded-xl border-2 border-dashed border-red-200 bg-red-50 text-red-600 text-sm">
-              <p className="font-bold mb-1">Peringatan: Tidak bisa Pulang</p>
+              <p className="font-bold mb-1">Tidak bisa Pulang</p>
               <p>Staf pengganti harus melakukan <strong>MASUK</strong> terlebih dahulu sebelum Anda bisa Pulang.</p>
             </div>
           )}
-
-          <Input label="Kas Sistem (Rp)" type="number" value={handoverForm.system_cash} onChange={e => setHandoverForm(f => ({ ...f, system_cash: parseInt(e.target.value) || 0 }))} />
-          <Input label="Kas Aktual (Rp)" type="number" value={handoverForm.actual_cash} onChange={e => setHandoverForm(f => ({ ...f, actual_cash: parseInt(e.target.value) || 0 }))} />
-          {diff !== 0 && (
-            <div className="p-3 rounded-xl flex justify-between" style={{ background: 'var(--bg-primary)' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Selisih</span>
-              <span className={`font-bold ${diff < 0 ? 'text-red-500' : 'text-green-500'}`}>{diff >= 0 ? '+' : ''}{formatCurrency(diff)}</span>
-            </div>
-          )}
-          <Input label="Keterangan (opsional)" value={handoverForm.notes} onChange={e => setHandoverForm(f => ({ ...f, notes: e.target.value }))} />
         </div>
       </Modal>
     </div>
