@@ -202,7 +202,7 @@ export default function ShiftPage() {
           <Button variant="danger" loading={handoverMutation.isPending} onClick={() => handoverMutation.mutate()}>
             Ya, Pulang Sekarang
           </Button>
-        />}>
+        </>}>
         <div className="space-y-4">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Pilih staf pengganti. Tanggung jawab shift akan langsung berpindah.
