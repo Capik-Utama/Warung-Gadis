@@ -57,6 +57,7 @@ export default function KasirPage() {
   const [debtPhone, setDebtPhone] = useState('')
   const [debtAddress, setDebtAddress] = useState('')
   const [showMemberSuggestions, setShowMemberSuggestions] = useState(false)
+  const [pendingConfirmModal, setPendingConfirmModal] = useState(false)
 
   const branchId = selectedBranch?.id ?? ''
   const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
@@ -506,7 +507,7 @@ export default function KasirPage() {
             <Button
               variant="success"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : handleOtwPending}
+              onClick={isStaffReadOnly ? goToShiftPage : () => setPendingConfirmModal(true)}
               disabled={isStaffReadOnly || checkedCount === 0}
             >
               OTW PENDING
@@ -709,6 +710,45 @@ export default function KasirPage() {
           </p>
         </div>
       </Modal>
+
+      {/* ─── OTW PENDING CONFIRM MODAL ─── */}
+      <Modal
+        isOpen={pendingConfirmModal}
+        onClose={() => setPendingConfirmModal(false)}
+        title="Proses ke Pending"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPendingConfirmModal(false)}>Batal</Button>
+            <Button
+              variant="success"
+              onClick={() => { setPendingConfirmModal(false); handleOtwPending() }}
+            >
+              Ya, Proses ke Pending
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Item ({checkedCount}):
+            </p>
+            {checkedItems.map((item) => (
+              <div key={item.product.id} className="flex justify-between text-sm py-0.5">
+                <span style={{ color: 'var(--text-primary)' }}>{item.product.name} x{item.quantity}</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{formatCurrency(item.subtotal)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Total</span>
+              <span style={{ color: 'var(--accent-primary)' }}>{formatCurrency(checkedTotal)}</span>
+            </div>
+          </div>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Yakin memproses {checkedCount} item ke pending?
+          </p>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -789,6 +829,12 @@ function PendingView({
 }) {
   const qc = useQueryClient()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [payConfirmMethod, setPayConfirmMethod] = useState<PaymentMethod | null>(null)
+  const [isProcessingPay, setIsProcessingPay] = useState(false)
+  const [debtPendingModal, setDebtPendingModal] = useState(false)
+  const [debtPendingName, setDebtPendingName] = useState('')
+  const [debtPendingPhone, setDebtPendingPhone] = useState('')
+  const [isProcessingDebt, setIsProcessingDebt] = useState(false)
 
   const selectedItemsList = items.filter((i) => selectedItems.has(i.id))
   const totalSelected = selectedItemsList.reduce((s, i) => s + i.subtotal, 0)
@@ -816,6 +862,7 @@ function PendingView({
       return
     }
 
+    setIsProcessingPay(true)
     try {
       // Create a NEW transaction for the current staff processing the payment
       // This ensures the omset goes to the current staff (userId)
@@ -847,10 +894,13 @@ function PendingView({
 
       toast.success('Pembayaran pending berhasil!')
       setSelectedItems(new Set())
+      setPayConfirmMethod(null)
       onRefresh()
       qc.invalidateQueries({ queryKey: ['today-stats'] })
     } catch (e: any) {
       toast.error(e.message || 'Gagal memproses pembayaran')
+    } finally {
+      setIsProcessingPay(false)
     }
   }
 
@@ -867,15 +917,12 @@ function PendingView({
       toast.error('Session tidak valid')
       return
     }
-
-    const customerName = prompt('Nama pelanggan:')
-    if (!customerName || !customerName.trim()) {
+    if (!debtPendingName.trim()) {
       toast.error('Nama pelanggan wajib diisi')
       return
     }
 
-    const customerPhone = prompt('Nomor HP (opsional):') || ''
-
+    setIsProcessingDebt(true)
     try {
       // Create a NEW transaction for the current staff processing the debt
       const trx = await createTransaction({
@@ -886,16 +933,16 @@ function PendingView({
           quantity: i.quantity,
           unit_price: i.unit_price,
         })),
-        customerName,
-        customerPhone,
+        customerName: debtPendingName,
+        customerPhone: debtPendingPhone,
         status: 'debt',
       })
 
       await createDebt({
         transaction_id: trx.id,
         branch_id: branchId,
-        customer_name: customerName,
-        customer_phone: customerPhone,
+        customer_name: debtPendingName,
+        customer_phone: debtPendingPhone,
         total_amount: totalSelected,
       })
 
@@ -913,10 +960,15 @@ function PendingView({
 
       toast.success('Hutang dari pending berhasil dicatat!')
       setSelectedItems(new Set())
+      setDebtPendingModal(false)
+      setDebtPendingName('')
+      setDebtPendingPhone('')
       onRefresh()
       qc.invalidateQueries({ queryKey: ['debts'] })
     } catch (e: any) {
       toast.error(e.message || 'Gagal mencatat hutang')
+    } finally {
+      setIsProcessingDebt(false)
     }
   }
 
@@ -996,7 +1048,7 @@ function PendingView({
             <Button
               variant="primary"
               className="text-xs py-2"
-              onClick={() => handlePayPending('cash')}
+              onClick={() => setPayConfirmMethod('cash')}
             >
               <Banknote size={14} className="inline mr-1" />
               Bayar Cash
@@ -1004,14 +1056,14 @@ function PendingView({
             <Button
               variant="danger"
               className="text-xs py-2"
-              onClick={handleDebtPending}
+              onClick={() => setDebtPendingModal(true)}
             >
               HUTANG
             </Button>
             <Button
               variant="secondary"
               className="text-xs py-2"
-              onClick={() => handlePayPending('qris')}
+              onClick={() => setPayConfirmMethod('qris')}
             >
               <QrCode size={14} className="inline mr-1" />
               Bayar QRIS
@@ -1019,7 +1071,7 @@ function PendingView({
             <Button
               variant="secondary"
               className="text-xs py-2"
-              onClick={() => handlePayPending('transfer')}
+              onClick={() => setPayConfirmMethod('transfer')}
             >
               <CreditCard size={14} className="inline mr-1" />
               Transfer
@@ -1027,6 +1079,100 @@ function PendingView({
           </div>
         </div>
       )}
+
+      {/* ─── PAY CONFIRM MODAL ─── */}
+      <Modal
+        isOpen={!!payConfirmMethod}
+        onClose={() => setPayConfirmMethod(null)}
+        title="Konfirmasi Pembayaran"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPayConfirmMethod(null)}>Batal</Button>
+            <Button
+              variant="success"
+              loading={isProcessingPay}
+              onClick={() => payConfirmMethod && handlePayPending(payConfirmMethod)}
+            >
+              Konfirmasi Bayar
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Item ({selectedItemsList.length}):
+            </p>
+            {selectedItemsList.map((item) => (
+              <div key={item.id} className="flex justify-between text-sm py-0.5">
+                <span style={{ color: 'var(--text-primary)' }}>{item.product_name} x{item.quantity}</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{formatCurrency(item.subtotal)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Total</span>
+              <span style={{ color: 'var(--accent-primary)' }}>{formatCurrency(totalSelected)}</span>
+            </div>
+          </div>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Metode:{' '}
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {payConfirmMethod === 'cash' ? 'Cash' : payConfirmMethod === 'qris' ? 'QRIS' : 'Transfer'}
+            </span>
+          </p>
+        </div>
+      </Modal>
+
+      {/* ─── DEBT PENDING MODAL ─── */}
+      <Modal
+        isOpen={debtPendingModal}
+        onClose={() => { setDebtPendingModal(false); setDebtPendingName(''); setDebtPendingPhone('') }}
+        title="Catat Hutang dari Pending"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setDebtPendingModal(false); setDebtPendingName(''); setDebtPendingPhone('') }}>Batal</Button>
+            <Button
+              variant="danger"
+              loading={isProcessingDebt}
+              onClick={handleDebtPending}
+              disabled={!debtPendingName.trim()}
+            >
+              Jadikan Hutang
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Item hutang ({selectedItemsList.length}):
+            </p>
+            {selectedItemsList.map((item) => (
+              <div key={item.id} className="flex justify-between text-sm py-0.5">
+                <span style={{ color: 'var(--text-primary)' }}>{item.product_name} x{item.quantity}</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{formatCurrency(item.subtotal)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Total Hutang</span>
+              <span className="text-red-500">{formatCurrency(totalSelected)}</span>
+            </div>
+          </div>
+          <Input
+            label="Nama Pelanggan *"
+            value={debtPendingName}
+            onChange={(e) => setDebtPendingName(e.target.value)}
+            placeholder="Masukkan nama pelanggan"
+            leftIcon={<User size={16} />}
+          />
+          <Input
+            label="Nomor HP (Opsional)"
+            value={debtPendingPhone}
+            onChange={(e) => setDebtPendingPhone(e.target.value)}
+            placeholder="08xxxxxxxxxx"
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
