@@ -154,7 +154,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       <div className="flex items-center gap-3">
         {mobileMenuButton}
         <div className="hidden md:block">
-          <WGLogo size={30} />
+          <WGLogo size={50} />
         </div>
         <div>
           <h1 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -184,7 +184,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           style={{ color: 'var(--text-secondary)', background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}
           title="Beranda"
         >
-          <Home size={18} />
+          <Home size={50} />
         </button>
         
         {/* Navigasi Cepat Dropdown */}
@@ -198,7 +198,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
             }}
           >
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              className="w-[50px] h-[50px] rounded-full flex items-center justify-center text-white text-xs font-bold"
               style={{ background: 'var(--accent-primary)' }}
             >
               {user?.name?.charAt(0).toUpperCase() ?? 'U'}

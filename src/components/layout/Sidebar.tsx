@@ -171,6 +171,6 @@ export const MobileMenuButton: React.FC<{ onClick: () => void }> = ({ onClick })
     className="md:hidden rounded-xl transition-colors"
     style={{ color: 'var(--text-primary)' }}
   >
-    <WGLogo size={45} />
+    <WGLogo size={50} />
   </button>
 )
