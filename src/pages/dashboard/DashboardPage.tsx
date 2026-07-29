@@ -59,6 +59,13 @@ function OwnerDashboard() {
     refetchInterval: 15_000,
   })
 
+  const { data: debts = [] } = useQuery({
+    queryKey: ['debts-owner'],
+    queryFn: fetchDebts,
+    refetchInterval: 30_000,
+  })
+
+  const totalDebt = (debts ?? []).reduce((sum, d) => sum + (d.remaining_amount ?? 0), 0)
   const [stockModal, setStockModal] = useState(false)
 
   return (
@@ -74,24 +81,33 @@ function OwnerDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Box 1: Kasir */}
+        <Link
+          to="/kasir"
+          className="stat-card cursor-pointer transition-all hover:shadow-md"
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-blue-50">
+              <ShoppingCart size={20} className="text-blue-500" />
+            </div>
+            <ChevronRight size={16} className="text-blue-300" />
+          </div>
+          <div>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Kasir</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Mulai Transaksi</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Buka menu kasir</p>
+          </div>
+        </Link>
+
+        {/* Box 2: Pemasukan */}
         <StatCard
-          title="Pendapatan Hari Ini"
+          title="Pemasukan Hari Ini"
           value={formatCurrency(todayStats?.revenue ?? 0)}
-          icon={<TrendingUp size={20} className="text-blue-600" />}
-          iconBg="bg-blue-50"
-        />
-        <StatCard
-          title="Omzet Bulan Ini"
-          value={formatCurrency(monthlyRevenue)}
           icon={<TrendingUp size={20} className="text-green-600" />}
           iconBg="bg-green-50"
         />
-        <StatCard
-          title="Transaksi Hari Ini"
-          value={todayStats?.transactionCount ?? 0}
-          icon={<ShoppingCart size={20} className="text-purple-600" />}
-          iconBg="bg-purple-50"
-        />
+
+        {/* Box 3: Stok Menipis */}
         <div
           className="stat-card cursor-pointer transition-all hover:shadow-md"
           onClick={() => setStockModal(true)}
@@ -108,6 +124,23 @@ function OwnerDashboard() {
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Ketuk untuk detail</p>
           </div>
         </div>
+
+        {/* Box 4: Hutang */}
+        <Link to="/hutang" className="stat-card cursor-pointer transition-all hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-amber-50">
+              <AlertTriangle size={20} className="text-amber-500" />
+            </div>
+            <ChevronRight size={16} className="text-amber-300" />
+          </div>
+          <div>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              {formatCurrency(totalDebt)}
+            </p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Hutang</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Klik untuk kelola</p>
+          </div>
+        </Link>
       </div>
 
       {/* Chart */}
