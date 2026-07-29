@@ -5,8 +5,26 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Poppins', 'sans-serif'],
-        poppins: ['Poppins', 'sans-serif'],
+        sans: [
+          'Poppins',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          'sans-serif',
+        ],
+        poppins: [
+          'Poppins',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          'sans-serif',
+        ],
       },
       colors: {
         primary: {
@@ -46,6 +64,12 @@ export default {
         '2xl': '1.25rem',
         '3xl': '1.5rem',
       },
+      spacing: {
+        'safe-top': 'max(1rem, env(safe-area-inset-top))',
+        'safe-bottom': 'max(1rem, env(safe-area-inset-bottom))',
+        'safe-left': 'max(1rem, env(safe-area-inset-left))',
+        'safe-right': 'max(1rem, env(safe-area-inset-right))',
+      },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
         'slide-in': 'slideIn 0.3s ease-out',
@@ -69,4 +93,8 @@ export default {
     },
   },
   plugins: [],
+  // Ensure mobile-first approach and compatibility
+  corePlugins: {
+    // Don't disable any core plugins - ensure full compatibility
+  },
 }

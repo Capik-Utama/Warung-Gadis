@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Bell, Search, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { WGLogo } from '@/components/shared/Logo'
@@ -7,7 +8,7 @@ import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, Select } from '@/components/ui/Input'
-import { closeAllShifts, checkInShift } from '@/services/shiftService'
+import { closeAllShifts, checkInShift, getActiveShift } from '@/services/shiftService'
 import { loginUser } from '@/services/userService'
 import { fetchBranches } from '@/services/branchService'
 import type { Branch } from '@/types'
@@ -30,6 +31,16 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const [branches, setBranches] = useState<Branch[]>([])
   const [branchesLoading, setBranchesLoading] = useState(false)
   const [loading, setLoading] = useState(false)
+  const isStaff = user?.role === 'staff'
+
+  const { data: activeShift } = useQuery({
+    queryKey: ['active-shift', user?.id],
+    queryFn: () => getActiveShift(user!.id),
+    enabled: !!user && isStaff,
+    refetchInterval: 30_000,
+  })
+
+  const isStaffReadOnly = isStaff && !activeShift
 
   // Load branches when modal opens
   const loadBranches = async () => {
@@ -151,6 +162,15 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {selectedBranch.name}
             </p>
+          )}
+          {isStaffReadOnly && (
+            <button
+              type="button"
+              onClick={() => navigate('/shift')}
+              className="mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700"
+            >
+              Belum Masuk Shift • Read Only
+            </button>
           )}
         </div>
       </div>

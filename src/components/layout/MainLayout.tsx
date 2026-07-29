@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar, MobileMenuButton } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -27,10 +27,33 @@ export const MainLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
 
-  const title = PAGE_TITLES[pathname] ?? 'WG POS'
+  const title = PAGE_TITLES[pathname] ?? 'Warung Gadis'
+
+  // Handle viewport height changes on mobile (browser chrome show/hide)
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
+  }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+    <div 
+      className="flex overflow-hidden w-full"
+      style={{ 
+        background: 'var(--bg-primary)',
+        height: '100dvh', // Use dynamic viewport height for better mobile support
+      }}
+    >
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((v) => !v)}
@@ -38,7 +61,7 @@ export const MainLayout: React.FC = () => {
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Topbar
           title={title}
           onMenuClick={() => setMobileOpen(true)}
@@ -46,8 +69,11 @@ export const MainLayout: React.FC = () => {
         />
 
         <main
-          className="flex-1 overflow-y-auto p-4 md:p-6"
-          style={{ background: 'var(--bg-primary)' }}
+          className="flex-1 overflow-y-auto p-4 md:p-6 w-full"
+          style={{ 
+            background: 'var(--bg-primary)',
+            WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+          }}
         >
           <div className="max-w-7xl mx-auto animate-fade-in">
             <Outlet />

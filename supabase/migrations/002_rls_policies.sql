@@ -1,5 +1,5 @@
 -- ============================================================
--- WG POS – Row Level Security (RLS)
+-- Warung Gadis – Row Level Security (RLS)
 -- ============================================================
 -- ⚠️  WARNING: The "allow_all" policies below are for DEVELOPMENT only.
 --     Before deploying to production, replace them with the role-based
@@ -23,7 +23,7 @@ ALTER TABLE shifts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shift_handovers ENABLE ROW LEVEL SECURITY;
 
 -- ─── Helper: get current user id ────────────────────────────
--- NOTE: In WG POS we use custom auth (not Supabase Auth).
+-- NOTE: In Warung Gadis we use custom auth (not Supabase Auth).
 -- The RLS policies below use a custom function to get the
 -- authenticated user id passed via app-level JWT claim.
 -- For simplicity during development, we allow all authenticated

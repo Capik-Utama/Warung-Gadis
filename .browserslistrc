@@ -1,0 +1,20 @@
+# Browserslist configuration for compatibility
+# Supports modern browsers and older devices commonly used in Indonesia
+
+# Modern browsers
+last 2 versions
+> 0.5%
+not dead
+
+# Mobile browsers
+iOS >= 12
+Android >= 6
+Chrome >= 87
+Firefox >= 78
+Safari >= 14
+Edge >= 88
+
+# Exclude very old browsers
+not IE 11
+not IE 10
+not IE 9

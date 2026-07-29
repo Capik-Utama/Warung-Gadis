@@ -1,6 +1,7 @@
 import { supabase } from '@/config/supabase'
 import type { Debt, DebtPayment } from '@/types'
 import { generateCode } from '@/utils/format'
+import { ensureStaffWriteAccess } from '@/services/accessGuardService'
 
 export async function fetchDebts(): Promise<Debt[]> {
   const { data, error } = await supabase
@@ -41,6 +42,8 @@ export async function createDebt(payload: {
   customer_phone?: string
   total_amount: number
 }): Promise<Debt> {
+  await ensureStaffWriteAccess()
+
   const { data, error } = await supabase
     .from('debts')
     .insert({
@@ -62,6 +65,8 @@ export async function payDebt(
   branchId: string,
   notes?: string,
 ): Promise<void> {
+  await ensureStaffWriteAccess()
+
   const { data: debt } = await supabase
     .from('debts')
     .select('paid_amount, total_amount, remaining_amount')

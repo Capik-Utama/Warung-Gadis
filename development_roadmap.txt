@@ -1,4 +1,4 @@
-WG POS (Warung Gadis) - Development Roadmap & Gap Analysis
+Warung Gadis (Warung Gadis) - Development Roadmap & Gap Analysis
 =======================================================
 
 Berdasarkan analisis antara Spesifikasi Proyek (pasted_content.txt) dan Kode Saat Ini, berikut adalah daftar fitur yang belum ada, perlu dikoreksi, atau ditingkatkan.

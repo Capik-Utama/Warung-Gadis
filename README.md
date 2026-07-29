@@ -1,4 +1,4 @@
-# WG POS – Warung Gadis
+# Warung Gadis – Warung Gadis
 
 > **Ngopi • Nongkrong • Karaoke • Nobar**
 
@@ -207,4 +207,4 @@ Buka aplikasi di browser Android Chrome → klik menu → **"Add to Home Screen"
 
 ---
 
-© 2025 WG POS – Warung Gadis. All rights reserved.
+© 2025 Warung Gadis – Warung Gadis. All rights reserved.

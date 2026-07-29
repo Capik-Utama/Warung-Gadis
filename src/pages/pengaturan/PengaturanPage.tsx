@@ -10,7 +10,7 @@ export default function PengaturanPage() {
           { icon: <Store size={20} />, title: 'Profil Warung', desc: 'Nama, alamat, dan kontak warung', bg: 'bg-blue-50', color: 'text-blue-500' },
           { icon: <Bell size={20} />, title: 'Notifikasi', desc: 'Atur alert stok dan transaksi', bg: 'bg-amber-50', color: 'text-amber-500' },
           { icon: <Shield size={20} />, title: 'Keamanan', desc: 'Password dan hak akses', bg: 'bg-green-50', color: 'text-green-500' },
-          { icon: <Info size={20} />, title: 'Tentang Aplikasi', desc: 'Versi dan informasi WG POS', bg: 'bg-purple-50', color: 'text-purple-500' },
+          { icon: <Info size={20} />, title: 'Tentang Aplikasi', desc: 'Versi dan informasi Warung Gadis', bg: 'bg-purple-50', color: 'text-purple-500' },
         ].map((item, i) => (
           <div key={i} className="card card-hover p-5 flex items-center gap-4 cursor-pointer">
             <div className={`p-3 rounded-xl ${item.bg}`}><span className={item.color}>{item.icon}</span></div>
@@ -22,7 +22,7 @@ export default function PengaturanPage() {
         ))}
       </div>
       <div className="card p-5">
-        <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tentang WG POS</h3>
+        <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tentang Warung Gadis</h3>
         <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
           <p>Versi: 1.0.0</p>
           <p>Tagline: Ngopi • Nongkrong • Karaoke • Nobar</p>

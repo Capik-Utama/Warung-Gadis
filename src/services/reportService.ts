@@ -229,13 +229,18 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
   return Array.from(grouped.values()).sort((a, b) => b.total - a.total)
 }
 
-// branchId parameter reserved for future branch-level stock filtering
-export async function getLowStockProducts(_branchId: string) {
-  const { data } = await supabase
+export async function getLowStockProducts(branchId: string) {
+  let query = supabase
     .from('products')
     .select('id, name, stock, min_stock, unit')
     .order('stock')
-    .limit(50)
+    .limit(100)
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data } = await query
 
   return (data ?? []).filter(
     (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
@@ -281,12 +286,60 @@ export async function getLowStockAllBranches(): Promise<{
 
 // Ambil stok menipis untuk cabang tertentu
 export async function getLowStockByBranch(branchId: string) {
-  const { data } = await supabase
+  let query = supabase
     .from('products')
     .select('id, name, stock, min_stock, unit')
     .order('stock')
 
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data } = await query
+
   return (data ?? []).filter(
     (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
   )
+}
+
+// Ambil statistik hari ini untuk staf tertentu di cabang tertentu
+export async function getTodayStaffStats(branchId: string, userId: string) {
+  const today = new Date().toISOString().slice(0, 10)
+
+  // Get paid transactions by this staff
+  let trxQuery = supabase
+    .from('transactions')
+    .select('total_amount')
+    .eq('status', 'paid')
+    .eq('user_id', userId)
+    .gte('created_at', `${today}T00:00:00`)
+
+  if (branchId) {
+    trxQuery = trxQuery.eq('branch_id', branchId)
+  }
+
+  const { data: trxData, error: trxError } = await trxQuery
+  if (trxError) throw trxError
+
+  // Get debt payments received by this staff
+  let payQuery = supabase
+    .from('debt_payments')
+    .select('amount')
+    .eq('user_id', userId)
+    .gte('created_at', `${today}T00:00:00`)
+
+  if (branchId) {
+    payQuery = payQuery.eq('branch_id', branchId)
+  }
+
+  const { data: payData, error: payError } = await payQuery
+  if (payError) throw payError
+
+  const salesRevenue = (trxData ?? []).reduce((sum: number, r: any) => sum + r.total_amount, 0)
+  const debtRevenue = (payData ?? []).reduce((sum: number, r: any) => sum + r.amount, 0)
+
+  return {
+    revenue: salesRevenue + debtRevenue,
+    transactionCount: (trxData ?? []).length + (payData ?? []).length,
+  }
 }

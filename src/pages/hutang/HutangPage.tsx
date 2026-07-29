@@ -412,12 +412,12 @@ export default function HutangPage() {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setPayModal(false)}>Batal</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setPayModal(false)}>Batal</Button>
             <Button 
               variant="primary" 
               className="flex-1" 
               onClick={() => payMutation.mutate()}
-              isLoading={payMutation.isPending}
+              loading={payMutation.isPending}
             >
               Simpan Pembayaran
             </Button>
