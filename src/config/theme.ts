@@ -76,13 +76,41 @@ export const THEME_META: Array<{ key: ThemeKey; name: string; desc: string }> = 
 ]
 
 export function applyTheme(key: ThemeKey) {
-  const vars = THEMES[key]
-  const root = document.documentElement
-  Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v))
-  root.setAttribute('data-theme', key)
-  localStorage.setItem('wg-theme', key)
+  try {
+    const vars = THEMES[key]
+    const root = document.documentElement
+    if (root && root.style) {
+      Object.entries(vars).forEach(([k, v]) => {
+        try {
+          root.style.setProperty(k, v)
+        } catch (e) {
+          console.warn(`Failed to set CSS variable ${k}:`, e)
+        }
+      })
+      root.setAttribute('data-theme', key)
+    }
+    
+    // Try to save to localStorage with error handling
+    try {
+      localStorage.setItem('wg-theme', key)
+    } catch (e) {
+      // localStorage might be disabled (private mode, quota exceeded, etc.)
+      console.warn('localStorage not available:', e)
+    }
+  } catch (e) {
+    console.error('Error applying theme:', e)
+  }
 }
 
 export function getStoredTheme(): ThemeKey {
-  return (localStorage.getItem('wg-theme') as ThemeKey) || 'blue-white'
+  try {
+    const stored = localStorage.getItem('wg-theme')
+    if (stored && (stored === 'blue-white' || stored === 'blue-black' || stored === 'white-black')) {
+      return stored as ThemeKey
+    }
+  } catch (e) {
+    // localStorage might be disabled (private mode, quota exceeded, etc.)
+    console.warn('localStorage not available:', e)
+  }
+  return 'blue-white'
 }
