@@ -184,7 +184,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           style={{ color: 'var(--text-secondary)', background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}
           title="Beranda"
         >
-          <Home size={50} />
+          <Home size={40} />
         </button>
         
         {/* Navigasi Cepat Dropdown */}
@@ -198,7 +198,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
             }}
           >
             <div
-              className="w-[50px] h-[50px] rounded-full flex items-center justify-center text-white text-xs font-bold"
+              className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-white text-xs font-bold"
               style={{ background: 'var(--accent-primary)' }}
             >
               {user?.name?.charAt(0).toUpperCase() ?? 'U'}
