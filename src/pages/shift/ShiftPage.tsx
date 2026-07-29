@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Clock, LogIn, LogOut, CheckCircle, AlertCircle } from 'lucide-react'
+import { Clock, LogIn, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { checkInShift, getActiveShift, requestHandover, approveHandover, getPendingHandover, getAllActiveShifts, fetchShiftHistory } from '@/services/shiftService'
+import { checkInShift, getActiveShift, autoHandover, getAllActiveShifts, fetchShiftHistory } from '@/services/shiftService'
 import { fetchUsers } from '@/services/userService'
 import { fetchBranches } from '@/services/branchService'
 import { Button } from '@/components/ui/Button'
@@ -20,19 +20,13 @@ export default function ShiftPage() {
 
   const [handoverModal, setHandoverModal] = useState(false)
   const [handoverForm, setHandoverForm] = useState({ to_user_id: '', system_cash: 0, actual_cash: 0, notes: '' })
+  const [replaceUserId, setReplaceUserId] = useState('')
 
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => getActiveShift(user!.id),
     enabled: !!user,
     refetchInterval: 30_000,
-  })
-
-  const { data: pendingHandover } = useQuery({
-    queryKey: ['pending-handover', user?.id],
-    queryFn: () => getPendingHandover(user!.id),
-    enabled: !!user,
-    refetchInterval: 10_000,
   })
 
   const { data: allActive = [] } = useQuery({
@@ -85,27 +79,18 @@ export default function ShiftPage() {
   const handoverMutation = useMutation({
     mutationFn: () => {
       if (!activeShift || !user) throw new Error('Tidak ada shift aktif')
-      if (!handoverForm.to_user_id) throw new Error('Pilih penerima shift')
-      return requestHandover({
+      if (!replaceUserId) throw new Error('Pilih staf pengganti')
+      return autoHandover({
         fromShiftId: activeShift.id,
         fromUserId: user.id,
-        toUserId: handoverForm.to_user_id,
+        toUserId: replaceUserId,
         branchId,
         systemCash: handoverForm.system_cash,
         actualCash: handoverForm.actual_cash,
         notes: handoverForm.notes,
       })
     },
-    onSuccess: () => { toast.success('Permintaan serah terima dikirim'); qc.invalidateQueries({ queryKey: ['active-shift'] }); setHandoverModal(false) },
-    onError: (e: Error) => toast.error(e.message),
-  })
-
-  const approveMutation = useMutation({
-    mutationFn: () => {
-      if (!pendingHandover) throw new Error('Tidak ada serah terima pending')
-      return approveHandover(pendingHandover.id, pendingHandover.from_shift_id)
-    },
-    onSuccess: () => { toast.success('Serah terima disetujui'); qc.invalidateQueries({ queryKey: ['pending-handover'] }); qc.invalidateQueries({ queryKey: ['all-active-shifts'] }) },
+    onSuccess: () => { toast.success('Shift berhasil diserahkan, tanggung jawab berpindah!'); qc.invalidateQueries({ queryKey: ['active-shift'] }); qc.invalidateQueries({ queryKey: ['all-active-shifts'] }); setHandoverModal(false); setReplaceUserId('') },
     onError: (e: Error) => toast.error(e.message),
   })
 
@@ -114,39 +99,6 @@ export default function ShiftPage() {
   return (
     <div className="space-y-6">
       <div><h1 className="page-title">Shift</h1><p className="page-subtitle">Kelola jam kerja</p></div>
-
-      {/* Pending handover notification */}
-      {pendingHandover && (
-        <div className="card p-5 border-2 border-amber-400">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertCircle size={18} className="text-amber-500" />
-            <h3 className="font-bold text-amber-600">Permintaan Serah Terima</h3>
-          </div>
-          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-            <strong>{(pendingHandover as {from_user?: {name: string}}).from_user?.name}</strong> meminta serah terima shift kepada Anda.
-          </p>
-          <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
-            <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kas Sistem</p>
-              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(pendingHandover.system_cash)}</p>
-            </div>
-            <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kas Aktual</p>
-              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(pendingHandover.actual_cash)}</p>
-            </div>
-            <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Selisih</p>
-              <p className={`font-bold ${pendingHandover.difference < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                {formatCurrency(Math.abs(pendingHandover.difference))}
-              </p>
-            </div>
-          </div>
-          {pendingHandover.notes && <p className="text-sm italic mb-4" style={{ color: 'var(--text-muted)' }}>{pendingHandover.notes}</p>}
-          <Button variant="success" loading={approveMutation.isPending} onClick={() => approveMutation.mutate()} icon={<CheckCircle size={16} />}>
-            Setujui & Ambil Shift
-          </Button>
-        </div>
-      )}
 
       {/* My Shift Status */}
       <div className="card p-5">
@@ -172,15 +124,13 @@ export default function ShiftPage() {
               <Button
                 variant="warning"
                 onClick={() => {
-                  // Hitung otomatis system_cash (simulasi, nantinya dari transaksi)
                   setHandoverForm(f => ({ ...f, system_cash: activeShift.system_cash || 0 }));
                   setHandoverModal(true);
                 }}
-                disabled={activeShift.status === 'pending_handover'}
                 icon={<LogOut size={16} />}
                 className="w-full"
               >
-                {activeShift.status === 'pending_handover' ? 'Menunggu Konfirmasi Pulang...' : 'PULANG (Serah Terima)'}
+                PULANG
               </Button>
             </div>
           </div>
@@ -245,34 +195,43 @@ export default function ShiftPage() {
         </div>
       </div>
 
-      {/* Handover Modal */}
-      <Modal isOpen={handoverModal} onClose={() => setHandoverModal(false)} title="Serah Terima Shift" size="lg"
+      {/* Handover Modal — Pilih Pengganti */}
+      <Modal isOpen={handoverModal} onClose={() => setHandoverModal(false)} title="Pulang & Serahkan Tanggung Jawab" size="lg"
         footer={<>
-          <Button variant="secondary" onClick={() => setHandoverModal(false)}>Batal</Button>
-          <Button variant="primary" loading={handoverMutation.isPending} onClick={() => handoverMutation.mutate()}>Kirim Permintaan</Button>
-        </>}>
+          <Button variant="secondary" onClick={() => { setHandoverModal(false); setReplaceUserId('') }}>Batal</Button>
+          <Button variant="danger" loading={handoverMutation.isPending} onClick={() => handoverMutation.mutate()}>
+            Ya, Pulang Sekarang
+          </Button>
+        />}>
         <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Pilih staf pengganti. Tanggung jawab shift akan langsung berpindah.
+          </p>
+
           {otherActiveUsers.length > 0 ? (
             <Select
-              label="Serahkan Shift Kepada (Staf yang sudah Masuk) *"
-              value={handoverForm.to_user_id}
-              onChange={e => setHandoverForm(f => ({ ...f, to_user_id: e.target.value }))}
+              label="Pilih Staf Pengganti *"
+              value={replaceUserId}
+              onChange={e => setReplaceUserId(e.target.value)}
               options={otherActiveUsers.map(s => ({ value: s.user_id, label: (s.user as {name:string})?.name ?? s.user_id }))}
-              placeholder="Pilih penerima shift"
+              placeholder="Pilih pengganti"
             />
           ) : (
             <div className="p-4 rounded-xl border-2 border-dashed border-red-200 bg-red-50 text-red-600 text-sm">
               <p className="font-bold mb-1">Peringatan: Tidak bisa Pulang</p>
-              <p>Staf pengganti harus melakukan <strong>MASUK</strong> terlebih dahulu sebelum Anda bisa melakukan serah terima (Pulang).</p>
+              <p>Staf pengganti harus melakukan <strong>MASUK</strong> terlebih dahulu sebelum Anda bisa Pulang.</p>
             </div>
           )}
+
           <Input label="Kas Sistem (Rp)" type="number" value={handoverForm.system_cash} onChange={e => setHandoverForm(f => ({ ...f, system_cash: parseInt(e.target.value) || 0 }))} />
           <Input label="Kas Aktual (Rp)" type="number" value={handoverForm.actual_cash} onChange={e => setHandoverForm(f => ({ ...f, actual_cash: parseInt(e.target.value) || 0 }))} />
-          <div className="p-3 rounded-xl flex justify-between" style={{ background: 'var(--bg-primary)' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Selisih</span>
-            <span className={`font-bold ${diff < 0 ? 'text-red-500' : 'text-green-500'}`}>{diff >= 0 ? '+' : ''}{formatCurrency(diff)}</span>
-          </div>
-          <Input label="Keterangan" value={handoverForm.notes} onChange={e => setHandoverForm(f => ({ ...f, notes: e.target.value }))} />
+          {diff !== 0 && (
+            <div className="p-3 rounded-xl flex justify-between" style={{ background: 'var(--bg-primary)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Selisih</span>
+              <span className={`font-bold ${diff < 0 ? 'text-red-500' : 'text-green-500'}`}>{diff >= 0 ? '+' : ''}{formatCurrency(diff)}</span>
+            </div>
+          )}
+          <Input label="Keterangan (opsional)" value={handoverForm.notes} onChange={e => setHandoverForm(f => ({ ...f, notes: e.target.value }))} />
         </div>
       </Modal>
     </div>

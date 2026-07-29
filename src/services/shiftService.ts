@@ -110,6 +110,44 @@ export async function fetchShiftHistory(branchId: string): Promise<Shift[]> {
   return data as Shift[]
 }
 
+export async function autoHandover(payload: {
+  fromShiftId: string
+  fromUserId: string
+  toUserId: string
+  branchId: string
+  systemCash: number
+  actualCash: number
+  notes: string
+}): Promise<ShiftHandover> {
+  const difference = payload.actualCash - payload.systemCash
+
+  // Insert handover record with status 'approved' directly
+  const { data, error } = await supabase
+    .from('shift_handovers')
+    .insert({
+      from_shift_id: payload.fromShiftId,
+      from_user_id: payload.fromUserId,
+      to_user_id: payload.toUserId,
+      branch_id: payload.branchId,
+      system_cash: payload.systemCash,
+      actual_cash: payload.actualCash,
+      difference,
+      notes: payload.notes,
+      status: 'approved',
+    })
+    .select()
+    .single()
+  if (error) throw error
+
+  // Close the from-shift immediately
+  await supabase
+    .from('shifts')
+    .update({ status: 'closed', check_out: new Date().toISOString() })
+    .eq('id', payload.fromShiftId)
+
+  return data as ShiftHandover
+}
+
 export async function closeAllShifts(branchId: string): Promise<void> {
   const { error } = await supabase
     .from('shifts')
