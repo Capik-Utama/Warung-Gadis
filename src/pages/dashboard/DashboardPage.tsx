@@ -8,7 +8,7 @@ import { StatCard } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches } from '@/services/reportService'
+import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches, getTodayStaffStats } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
 import { fetchDebts } from '@/services/debtService'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -296,8 +296,15 @@ function OwnerDashboard() {
 
 // Staff dashboard
 function StaffDashboard() {
-  const { selectedBranch } = useAuthStore()
+  const { selectedBranch, user } = useAuthStore()
   const branchId = selectedBranch?.id ?? ''
+  const userId = user?.id ?? ''
+
+  const { data: todayStaffStats } = useQuery({
+    queryKey: ['today-staff-stats', branchId, userId],
+    queryFn: () => getTodayStaffStats(branchId, userId),
+    refetchInterval: 30_000,
+  })
 
   const { data: lowStock = [] } = useQuery({
     queryKey: ['low-stock-staff', branchId],
@@ -316,38 +323,73 @@ function StaffDashboard() {
 
   return (
     <div className="space-y-6 pt-4">
-      {/* Quick menu */}
+      {/* 4 Stat Boxes Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <a href="/kasir" className="card card-hover p-6 text-center cursor-pointer">
-          <ShoppingCart size={32} className="mx-auto mb-3 text-blue-500" />
-          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Kasir</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Mulai transaksi</p>
-        </a>
-        <a href="/hutang" className="card card-hover p-6 text-center cursor-pointer">
-          <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
-          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Hutang</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total: {formatCurrency(totalDebt)}</p>
-        </a>
-      </div>
-
-
-
-      {/* Stok Menipis Card - Style like Manager */}
-      <div
-        className="stat-card cursor-pointer transition-all hover:shadow-md"
-        onClick={() => setStockModal(true)}
-      >
-        <div className="flex items-start justify-between">
-          <div className="p-2.5 rounded-xl bg-red-50">
-            <AlertTriangle size={20} className="text-red-500" />
+        {/* Box 1: Kasir */}
+        <a href="/kasir" className="stat-card cursor-pointer transition-all hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-blue-50">
+              <ShoppingCart size={20} className="text-blue-500" />
+            </div>
+            <ChevronRight size={16} className="text-blue-300" />
           </div>
-          <ChevronRight size={16} className="text-red-300" />
+          <div>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Kasir</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Mulai Transaksi</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Buka menu kasir</p>
+          </div>
+        </a>
+
+        {/* Box 2: Pendapatan Hari Ini (Staff) */}
+        <div className="stat-card">
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-green-50">
+              <TrendingUp size={20} className="text-green-500" />
+            </div>
+          </div>
+          <div>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              {formatCurrency(todayStaffStats?.revenue ?? 0)}
+            </p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Pendapatan Anda</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Hari ini di cabang ini</p>
+          </div>
         </div>
-        <div>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{lowStock.length}</p>
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Stok Menipis</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Cabang ini saja</p>
+
+        {/* Box 3: Stok Menipis */}
+        <div
+          className="stat-card cursor-pointer transition-all hover:shadow-md"
+          onClick={() => setStockModal(true)}
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-red-50">
+              <AlertTriangle size={20} className="text-red-500" />
+            </div>
+            <ChevronRight size={16} className="text-red-300" />
+          </div>
+          <div>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{lowStock.length}</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Stok Menipis</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Ketuk untuk detail</p>
+          </div>
         </div>
+
+        {/* Box 4: Hutang */}
+        <a href="/hutang" className="stat-card cursor-pointer transition-all hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-amber-50">
+              <AlertTriangle size={20} className="text-amber-500" />
+            </div>
+            <ChevronRight size={16} className="text-amber-300" />
+          </div>
+          <div>
+            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              {formatCurrency(totalDebt)}
+            </p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Hutang</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Klik untuk kelola</p>
+          </div>
+        </a>
       </div>
 
       {/* Warung banner */}
