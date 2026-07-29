@@ -4,9 +4,9 @@ import {
   LayoutDashboard, ShoppingCart, Package, Tag, Truck, BarChart3,
   Users, GitBranch, Settings, Database, Palette, Clock,
   TrendingUp, CreditCard, LogOut, ChevronLeft, ChevronRight,
-  AlertTriangle, Menu, X,
+  AlertTriangle, X,
 } from 'lucide-react'
-import { AppLogo } from '@/components/shared/Logo'
+import { AppLogo, WGLogo } from '@/components/shared/Logo'
 import { useAuthStore } from '@/store/authStore'
 import { ROLE_MENUS } from '@/permissions'
 
@@ -168,9 +168,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpe
 export const MobileMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     onClick={onClick}
-    className="md:hidden p-2 rounded-xl transition-colors"
+    className="md:hidden rounded-xl transition-colors"
     style={{ color: 'var(--text-primary)' }}
   >
-    <Menu size={20} />
+    <WGLogo size={45} />
   </button>
 )
