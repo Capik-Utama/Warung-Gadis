@@ -1,5 +1,6 @@
 import { supabase } from '@/config/supabase'
 import type { StockLog } from '@/types'
+import { ensureStaffWriteAccess } from '@/services/accessGuardService'
 
 export async function fetchStockLogs(branchId: string): Promise<StockLog[]> {
   const { data, error } = await supabase
@@ -21,6 +22,8 @@ export async function addStock(payload: {
   user_id: string
   supplier_id?: string
 }): Promise<void> {
+  await ensureStaffWriteAccess()
+
   // Insert log
   const { error: logError } = await supabase.from('stock_logs').insert(payload)
   if (logError) throw logError

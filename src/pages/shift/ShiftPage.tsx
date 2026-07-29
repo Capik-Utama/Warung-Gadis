@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, LogIn, LogOut, CheckCircle, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { checkInShift, getActiveShift, requestHandover, approveHandover, getPendingHandover, getAllActiveShifts, fetchShiftHistory } from '@/services/shiftService'
 import { fetchUsers } from '@/services/userService'
+import { fetchBranches } from '@/services/branchService'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -12,9 +13,10 @@ import { useAuthStore } from '@/store/authStore'
 import type { Shift } from '@/types'
 
 export default function ShiftPage() {
-  const { user, selectedBranch } = useAuthStore()
+  const { user, selectedBranch, setSelectedBranch } = useAuthStore()
   const qc = useQueryClient()
   const branchId = selectedBranch?.id ?? ''
+  const [checkInBranchId, setCheckInBranchId] = useState(branchId)
 
   const [handoverModal, setHandoverModal] = useState(false)
   const [handoverForm, setHandoverForm] = useState({ to_user_id: '', system_cash: 0, actual_cash: 0, notes: '' })
@@ -46,16 +48,37 @@ export default function ShiftPage() {
   })
 
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
+  const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
+
+  useEffect(() => {
+    if (branchId && !checkInBranchId) {
+      setCheckInBranchId(branchId)
+    }
+  }, [branchId, checkInBranchId])
+
+  useEffect(() => {
+    if (!selectedBranch && activeShift?.branch) {
+      setSelectedBranch(activeShift.branch)
+    }
+  }, [selectedBranch, activeShift, setSelectedBranch])
   
   // Staf lain yang sedang aktif di cabang yang sama
   const otherActiveUsers = allActive.filter(s => s.user_id !== user?.id)
 
   const checkInMutation = useMutation({
     mutationFn: () => {
-      if (!user || !branchId) throw new Error('Session tidak valid')
-      return checkInShift(user.id, branchId)
+      const targetBranchId = checkInBranchId || branchId
+      if (!user || !targetBranchId) throw new Error('Pilih cabang dulu untuk masuk shift')
+      return checkInShift(user.id, targetBranchId)
     },
-    onSuccess: () => { toast.success('Shift dimulai!'); qc.invalidateQueries({ queryKey: ['active-shift'] }); qc.invalidateQueries({ queryKey: ['all-active-shifts'] }) },
+    onSuccess: () => {
+      const targetBranchId = checkInBranchId || branchId
+      const branch = branches.find((b) => b.id === targetBranchId)
+      if (branch) setSelectedBranch(branch)
+      toast.success('Shift dimulai!')
+      qc.invalidateQueries({ queryKey: ['active-shift'] })
+      qc.invalidateQueries({ queryKey: ['all-active-shifts'] })
+    },
     onError: (e: Error) => toast.error(e.message),
   })
 
@@ -162,14 +185,23 @@ export default function ShiftPage() {
             </div>
           </div>
         ) : (
-          <Button
-            variant="primary"
-            loading={checkInMutation.isPending}
-            onClick={() => checkInMutation.mutate()}
-            icon={<LogIn size={16} />}
-          >
-            MASUK (Mulai Shift)
-          </Button>
+          <div className="space-y-3">
+            <Select
+              label="Pilih Cabang Shift *"
+              value={checkInBranchId}
+              onChange={(e) => setCheckInBranchId(e.target.value)}
+              options={branches.map((b) => ({ value: b.id, label: b.name }))}
+              placeholder="Pilih cabang"
+            />
+            <Button
+              variant="primary"
+              loading={checkInMutation.isPending}
+              onClick={() => checkInMutation.mutate()}
+              icon={<LogIn size={16} />}
+            >
+              MASUK (Mulai Shift)
+            </Button>
+          </div>
         )}
       </div>
 

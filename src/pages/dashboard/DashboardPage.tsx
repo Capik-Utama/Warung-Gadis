@@ -11,6 +11,7 @@ import { formatCurrency, formatDateTime } from '@/utils/format'
 import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches, getTodayStaffStats } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
 import { fetchDebts } from '@/services/debtService'
+import { getActiveShift } from '@/services/shiftService'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 // Owner / Manager dashboard
@@ -299,17 +300,26 @@ function StaffDashboard() {
   const { selectedBranch, user } = useAuthStore()
   const branchId = selectedBranch?.id ?? ''
   const userId = user?.id ?? ''
+  const { data: activeShift } = useQuery({
+    queryKey: ['active-shift', userId],
+    queryFn: () => getActiveShift(userId),
+    enabled: !!userId,
+    refetchInterval: 30_000,
+  })
+  const isReadOnly = !activeShift || !branchId
 
   const { data: todayStaffStats } = useQuery({
     queryKey: ['today-staff-stats', branchId, userId],
     queryFn: () => getTodayStaffStats(branchId, userId),
     refetchInterval: 30_000,
+    enabled: !!branchId && !!userId,
   })
 
   const { data: lowStock = [] } = useQuery({
     queryKey: ['low-stock-staff', branchId],
     queryFn: () => getLowStockProducts(branchId),
     refetchInterval: 30_000,
+    enabled: !!branchId,
   })
 
   const { data: debts = [] } = useQuery({
@@ -326,7 +336,10 @@ function StaffDashboard() {
       {/* 4 Stat Boxes Grid */}
       <div className="grid grid-cols-2 gap-4">
         {/* Box 1: Kasir */}
-        <a href="/kasir" className="stat-card cursor-pointer transition-all hover:shadow-md">
+        <a
+          href={isReadOnly ? '/shift' : '/kasir'}
+          className="stat-card cursor-pointer transition-all hover:shadow-md"
+        >
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-blue-50">
               <ShoppingCart size={20} className="text-blue-500" />
@@ -335,8 +348,12 @@ function StaffDashboard() {
           </div>
           <div>
             <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Kasir</p>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Mulai Transaksi</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Buka menu kasir</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              {isReadOnly ? 'Belum Masuk Shift' : 'Mulai Transaksi'}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {isReadOnly ? 'Arahkan ke masuk shift' : 'Buka menu kasir'}
+            </p>
           </div>
         </a>
 

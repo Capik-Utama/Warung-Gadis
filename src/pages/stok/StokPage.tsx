@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, History, AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { fetchStockLogs, addStock } from '@/services/stockService'
 import { fetchProducts } from '@/services/productService'
 import { fetchSuppliers } from '@/services/supplierService'
+import { getActiveShift } from '@/services/shiftService'
+import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -12,9 +15,18 @@ import { formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 
 export default function StokPage() {
+  const navigate = useNavigate()
   const { user, selectedBranch } = useAuthStore()
   const qc = useQueryClient()
   const branchId = selectedBranch?.id ?? ''
+  const isStaff = user?.role === 'staff'
+  const { data: activeShift } = useQuery({
+    queryKey: ['active-shift', user?.id],
+    queryFn: () => getActiveShift(user!.id),
+    enabled: !!user && isStaff,
+    refetchInterval: 30_000,
+  })
+  const isStaffReadOnly = isStaff && (!activeShift || !branchId)
 
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ product_id: '', type: 'in' as 'in'|'out'|'adjustment', quantity: 1, notes: '', supplier_id: '' })
@@ -39,8 +51,27 @@ export default function StokPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div><h1 className="page-title">Manajemen Stok</h1><p className="page-subtitle">Riwayat pergerakan stok</p></div>
-        <Button variant="primary" icon={<Plus size={16} />} onClick={() => setModal(true)}>Tambah Stok</Button>
+        <Button
+          variant="primary"
+          icon={<Plus size={16} />}
+          onClick={isStaffReadOnly ? () => {
+            toast(STAFF_SHIFT_REQUIRED_MESSAGE)
+            navigate('/shift')
+          } : () => setModal(true)}
+          disabled={isStaffReadOnly}
+        >
+          Tambah Stok
+        </Button>
       </div>
+
+      {isStaffReadOnly && (
+        <div className="card p-4 border-l-4 border-amber-400">
+          <p className="font-semibold text-amber-700">Belum Masuk Shift / Read Only</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Aksi ubah stok dikunci sampai Anda masuk shift.
+          </p>
+        </div>
+      )}
 
       {lowStock.length > 0 && (
         <div className="card p-4 border-l-4 border-red-500">
