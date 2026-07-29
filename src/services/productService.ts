@@ -25,6 +25,26 @@ export async function fetchProducts(branchId?: string): Promise<Product[]> {
   return data as Product[]
 }
 
+/** Compute per-product net stock for a given branch from stock_logs */
+export async function fetchBranchStocks(branchId: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from('stock_logs')
+    .select('product_id, type, quantity')
+    .eq('branch_id', branchId)
+  if (error) throw error
+
+  const map = new Map<string, number>()
+  for (const log of data as { product_id: string; type: string; quantity: number }[]) {
+    const prev = map.get(log.product_id) ?? 0
+    if (log.type === 'out' || log.type === 'sale') {
+      map.set(log.product_id, prev - log.quantity)
+    } else {
+      map.set(log.product_id, prev + log.quantity)
+    }
+  }
+  return map
+}
+
 export async function createProduct(
   payload: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'category'>,
 ): Promise<Product> {
