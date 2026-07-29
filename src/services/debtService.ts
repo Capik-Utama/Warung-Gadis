@@ -10,7 +10,7 @@ export async function fetchDebts(): Promise<Debt[]> {
     .neq('status', 'paid')
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data as Debt[]
+  return (data ?? []) as Debt[]
 }
 
 export async function fetchDebtsAll(): Promise<Debt[]> {
@@ -20,7 +20,7 @@ export async function fetchDebtsAll(): Promise<Debt[]> {
     .neq('status', 'paid')
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data as Debt[]
+  return (data ?? []) as Debt[]
 }
 
 export async function fetchPaidDebts(): Promise<Debt[]> {
@@ -31,7 +31,7 @@ export async function fetchPaidDebts(): Promise<Debt[]> {
     .order('updated_at', { ascending: false })
     .limit(100)
   if (error) throw error
-  return data as Debt[]
+  return (data ?? []) as Debt[]
 }
 
 export async function createDebt(payload: {

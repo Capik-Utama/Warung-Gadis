@@ -10,6 +10,7 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
     'supplier',
     'stok',
     'transaksi',
+    'hutang',
     'laporan',
     'user',
     'cabang',
@@ -24,11 +25,12 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
     'produk',
     'supplier',
     'stok',
+    'hutang',
     'laporan',
     'user',
     'shift',
   ],
-  staff: ['dashboard', 'kasir', 'stok', 'shift'],
+  staff: ['dashboard', 'kasir', 'hutang', 'stok', 'shift'],
 }
 
 // Default permissions per role

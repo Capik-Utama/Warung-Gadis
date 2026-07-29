@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
   Users, GitBranch, Coffee, Mic2, Tv, Clock, ChevronRight,
@@ -329,15 +330,15 @@ function StaffDashboard() {
   })
 
   const [stockModal, setStockModal] = useState(false)
-  const totalDebt = debts.reduce((sum, d) => sum + d.remaining_amount, 0)
+  const totalDebt = (debts ?? []).reduce((sum, d) => sum + (d.remaining_amount ?? 0), 0)
 
   return (
     <div className="space-y-6 pt-4">
       {/* 4 Stat Boxes Grid */}
       <div className="grid grid-cols-2 gap-4">
         {/* Box 1: Kasir */}
-        <a
-          href={isReadOnly ? '/shift' : '/kasir'}
+        <Link
+          to={isReadOnly ? '/shift' : '/kasir'}
           className="stat-card cursor-pointer transition-all hover:shadow-md"
         >
           <div className="flex items-start justify-between">
@@ -355,7 +356,7 @@ function StaffDashboard() {
               {isReadOnly ? 'Arahkan ke masuk shift' : 'Buka menu kasir'}
             </p>
           </div>
-        </a>
+        </Link>
 
         {/* Box 2: Pendapatan Hari Ini (Staff) */}
         <div className="stat-card">
@@ -392,7 +393,7 @@ function StaffDashboard() {
         </div>
 
         {/* Box 4: Hutang */}
-        <a href="/hutang" className="stat-card cursor-pointer transition-all hover:shadow-md">
+        <Link to="/hutang" className="stat-card cursor-pointer transition-all hover:shadow-md">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-amber-50">
               <AlertTriangle size={20} className="text-amber-500" />
@@ -406,7 +407,7 @@ function StaffDashboard() {
             <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Hutang</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Klik untuk kelola</p>
           </div>
-        </a>
+        </Link>
       </div>
 
       {/* Warung banner */}
@@ -436,7 +437,7 @@ function StaffDashboard() {
         <div>
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Status Shift</p>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            <a href="/shift" className="text-blue-500 hover:underline">Kelola shift Anda</a>
+            <Link to="/shift" className="text-blue-500 hover:underline">Kelola shift Anda</Link>
           </p>
         </div>
       </div>
