@@ -229,13 +229,18 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
   return Array.from(grouped.values()).sort((a, b) => b.total - a.total)
 }
 
-// branchId parameter reserved for future branch-level stock filtering
-export async function getLowStockProducts(_branchId: string) {
-  const { data } = await supabase
+export async function getLowStockProducts(branchId: string) {
+  let query = supabase
     .from('products')
     .select('id, name, stock, min_stock, unit')
     .order('stock')
-    .limit(50)
+    .limit(100)
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data } = await query
 
   return (data ?? []).filter(
     (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
@@ -281,10 +286,16 @@ export async function getLowStockAllBranches(): Promise<{
 
 // Ambil stok menipis untuk cabang tertentu
 export async function getLowStockByBranch(branchId: string) {
-  const { data } = await supabase
+  let query = supabase
     .from('products')
     .select('id, name, stock, min_stock, unit')
     .order('stock')
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId)
+  }
+
+  const { data } = await query
 
   return (data ?? []).filter(
     (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,

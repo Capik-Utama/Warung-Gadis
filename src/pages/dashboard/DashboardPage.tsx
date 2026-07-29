@@ -332,24 +332,22 @@ function StaffDashboard() {
 
 
 
-      {/* Stok Menipis Card */}
+      {/* Stok Menipis Card - Style like Manager */}
       <div
-        className="card p-5 border-l-4 border-red-500 cursor-pointer transition-all hover:shadow-md"
+        className="stat-card cursor-pointer transition-all hover:shadow-md"
         onClick={() => setStockModal(true)}
       >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={18} className="text-red-500" />
-            <h3 className="font-semibold text-red-500">STOK MENIPIS</h3>
+        <div className="flex items-start justify-between">
+          <div className="p-2.5 rounded-xl bg-red-50">
+            <AlertTriangle size={20} className="text-red-500" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-bold text-red-500">{lowStock.length}</span>
-            <ChevronRight size={16} className="text-red-300" />
-          </div>
+          <ChevronRight size={16} className="text-red-300" />
         </div>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Ketuk untuk lihat detail di cabang ini
-        </p>
+        <div>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{lowStock.length}</p>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Stok Menipis</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Cabang ini saja</p>
+        </div>
       </div>
 
       {/* Warung banner */}
