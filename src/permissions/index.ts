@@ -30,7 +30,22 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
     'user',
     'shift',
   ],
-  staff: ['dashboard', 'kasir', 'hutang', 'stok', 'shift'],
+  staff: [
+    'dashboard',
+    'kasir',
+    'produk',
+    'kategori',
+    'supplier',
+    'stok',
+    'transaksi',
+    'hutang',
+    'laporan',
+    'shift',
+    'user',
+    'cabang',
+    'pengaturan',
+    'theme',
+  ],
 }
 
 // Default permissions per role

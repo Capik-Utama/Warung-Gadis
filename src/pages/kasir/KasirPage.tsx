@@ -4,7 +4,6 @@ import {
   Search, ShoppingCart, CheckSquare, Square,
   CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus, Star,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
@@ -16,8 +15,6 @@ import {
   cancelTransactionItems,
 } from '@/services/transactionService'
 import { createDebt, fetchDebtMembers } from '@/services/debtService'
-import { getActiveShift } from '@/services/shiftService'
-import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -25,6 +22,7 @@ import { formatCurrency } from '@/utils/format'
 import type { Product, PaymentMethod, Transaction, TransactionItem } from '@/types'
 
 const STORAGE_KEY = 'wg-favorites'
+const STAFF_READONLY_MESSAGE = 'Staff hanya dapat melihat data kasir, tidak dapat melakukan transaksi.'
 
 type ViewTab = 'all' | 'pending' | 'favorit' | string // string = category id
 
@@ -42,7 +40,6 @@ function useFavorites(userId: string) {
 }
 
 export default function KasirPage() {
-  const navigate = useNavigate()
   const { user, selectedBranch } = useAuthStore()
   const cart = useCartStore()
   const qc = useQueryClient()
@@ -61,18 +58,12 @@ export default function KasirPage() {
   const branchId = selectedBranch?.id ?? ''
   const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
   const isStaff = user?.role === 'staff'
-  const { data: activeShift } = useQuery({
-    queryKey: ['active-shift', user?.id],
-    queryFn: () => getActiveShift(user!.id),
-    enabled: !!user && isStaff,
-    refetchInterval: 30_000,
-  })
-  const isStaffReadOnly = isStaff && (!activeShift || !branchId)
+  // Staff selalu dalam mode lihat saja — tidak diizinkan melakukan transaksi
+  const isStaffReadOnly = isStaff
 
-  const goToShiftPage = useCallback(() => {
-    toast(STAFF_SHIFT_REQUIRED_MESSAGE)
-    navigate('/shift')
-  }, [navigate])
+  const handleLockedAction = useCallback(() => {
+    toast(STAFF_READONLY_MESSAGE)
+  }, [])
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -167,7 +158,7 @@ export default function KasirPage() {
   // OTW PENDING
   const handleOtwPending = useCallback(() => {
     if (isStaffReadOnly) {
-      goToShiftPage()
+      handleLockedAction()
       return
     }
     if (checkedCount === 0) {
@@ -205,12 +196,12 @@ export default function KasirPage() {
         error: (e: Error) => e.message,
       },
     )
-  }, [isStaffReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc])
+  }, [isStaffReadOnly, handleLockedAction, checkedCount, checkedItems, user, branchId, refetchPending, qc])
 
   // BAYAR
   const payMutation = useMutation({
     mutationFn: async () => {
-      if (isStaffReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+      if (isStaffReadOnly) throw new Error(STAFF_READONLY_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dibayar')
 
@@ -245,7 +236,7 @@ export default function KasirPage() {
   // HUTANG
   const debtMutation = useMutation({
     mutationFn: async () => {
-      if (isStaffReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+      if (isStaffReadOnly) throw new Error(STAFF_READONLY_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
@@ -307,14 +298,13 @@ export default function KasirPage() {
 
       {isStaffReadOnly && (
         <div className="card p-4 border-l-4 border-amber-400">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
             <div>
-              <p className="font-semibold text-amber-700">Belum Masuk Shift / Read Only</p>
+              <p className="font-semibold text-amber-700">Mode Lihat Saja</p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Anda tetap bisa lihat data kasir, tapi aksi transaksi dikunci sampai masuk shift.
+                Staff hanya dapat melihat data kasir. Aksi transaksi tidak diizinkan.
               </p>
             </div>
-            <Button variant="warning" onClick={goToShiftPage}>Masuk Shift</Button>
           </div>
         </div>
       )}
@@ -365,7 +355,7 @@ export default function KasirPage() {
             branchId={branchId}
             userId={user?.id ?? ''}
             isReadOnly={isStaffReadOnly}
-            onLockedAction={goToShiftPage}
+            onLockedAction={handleLockedAction}
             onRefresh={() => {
               refetchPending()
               qc.invalidateQueries({ queryKey: ['products'] })
@@ -506,7 +496,7 @@ export default function KasirPage() {
             <Button
               variant="success"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : handleOtwPending}
+              onClick={isStaffReadOnly ? handleLockedAction : handleOtwPending}
               disabled={isStaffReadOnly || checkedCount === 0}
             >
               OTW PENDING
@@ -514,7 +504,7 @@ export default function KasirPage() {
             <Button
               variant="danger"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : () => setDebtModal(true)}
+              onClick={isStaffReadOnly ? handleLockedAction : () => setDebtModal(true)}
               disabled={isStaffReadOnly || checkedCount === 0}
             >
               HUTANG
@@ -522,7 +512,7 @@ export default function KasirPage() {
             <Button
               variant="primary"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : () => setPayModal(true)}
+              onClick={isStaffReadOnly ? handleLockedAction : () => setPayModal(true)}
               disabled={isStaffReadOnly || checkedCount === 0}
               icon={<CreditCard size={14} />}
             >

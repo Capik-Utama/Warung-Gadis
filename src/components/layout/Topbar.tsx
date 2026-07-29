@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Bell, Home, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
+import { Home, LogOut, LogIn, Palette, Store, ShieldCheck, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { WGLogo } from '@/components/shared/Logo'
 import { useNavigate } from 'react-router-dom'
@@ -8,7 +7,7 @@ import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, Select } from '@/components/ui/Input'
-import { closeAllShifts, checkInShift, getActiveShift } from '@/services/shiftService'
+import { closeAllShifts, checkInShift } from '@/services/shiftService'
 import { loginUser } from '@/services/userService'
 import { fetchBranches } from '@/services/branchService'
 import type { Branch } from '@/types'
@@ -33,14 +32,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const [loading, setLoading] = useState(false)
   const isStaff = user?.role === 'staff'
 
-  const { data: activeShift } = useQuery({
-    queryKey: ['active-shift', user?.id],
-    queryFn: () => getActiveShift(user!.id),
-    enabled: !!user && isStaff,
-    refetchInterval: 30_000,
-  })
-
-  const isStaffReadOnly = isStaff && !activeShift
+  // Staff selalu dalam mode lihat saja
+  const isStaffReadOnly = isStaff
 
   // Load branches when modal opens
   const loadBranches = async () => {
