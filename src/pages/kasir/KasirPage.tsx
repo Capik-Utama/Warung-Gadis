@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
   CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus, Star,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
@@ -15,6 +16,8 @@ import {
   cancelTransactionItems,
 } from '@/services/transactionService'
 import { createDebt, fetchDebtMembers } from '@/services/debtService'
+import { getActiveShift } from '@/services/shiftService'
+import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -39,6 +42,7 @@ function useFavorites(userId: string) {
 }
 
 export default function KasirPage() {
+  const navigate = useNavigate()
   const { user, selectedBranch } = useAuthStore()
   const cart = useCartStore()
   const qc = useQueryClient()
@@ -56,6 +60,19 @@ export default function KasirPage() {
 
   const branchId = selectedBranch?.id ?? ''
   const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
+  const isStaff = user?.role === 'staff'
+  const { data: activeShift } = useQuery({
+    queryKey: ['active-shift', user?.id],
+    queryFn: () => getActiveShift(user!.id),
+    enabled: !!user && isStaff,
+    refetchInterval: 30_000,
+  })
+  const isStaffReadOnly = isStaff && (!activeShift || !branchId)
+
+  const goToShiftPage = useCallback(() => {
+    toast(STAFF_SHIFT_REQUIRED_MESSAGE)
+    navigate('/shift')
+  }, [navigate])
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -149,6 +166,10 @@ export default function KasirPage() {
 
   // OTW PENDING
   const handleOtwPending = useCallback(() => {
+    if (isStaffReadOnly) {
+      goToShiftPage()
+      return
+    }
     if (checkedCount === 0) {
       toast.error('Ceklis minimal 1 produk')
       return
@@ -184,11 +205,12 @@ export default function KasirPage() {
         error: (e: Error) => e.message,
       },
     )
-  }, [checkedCount, checkedItems, user, branchId, refetchPending, qc])
+  }, [isStaffReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc])
 
   // BAYAR
   const payMutation = useMutation({
     mutationFn: async () => {
+      if (isStaffReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dibayar')
 
@@ -223,6 +245,7 @@ export default function KasirPage() {
   // HUTANG
   const debtMutation = useMutation({
     mutationFn: async () => {
+      if (isStaffReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
@@ -282,6 +305,20 @@ export default function KasirPage() {
         />
       </div>
 
+      {isStaffReadOnly && (
+        <div className="card p-4 border-l-4 border-amber-400">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-amber-700">Belum Masuk Shift / Read Only</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                Anda tetap bisa lihat data kasir, tapi aksi transaksi dikunci sampai masuk shift.
+              </p>
+            </div>
+            <Button variant="warning" onClick={goToShiftPage}>Masuk Shift</Button>
+          </div>
+        </div>
+      )}
+
       {/* TAB BAR */}
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         <TabButton
@@ -327,6 +364,8 @@ export default function KasirPage() {
             onRefetch={refetchPending}
             branchId={branchId}
             userId={user?.id ?? ''}
+            isReadOnly={isStaffReadOnly}
+            onLockedAction={goToShiftPage}
             onRefresh={() => {
               refetchPending()
               qc.invalidateQueries({ queryKey: ['products'] })
@@ -467,24 +506,24 @@ export default function KasirPage() {
             <Button
               variant="success"
               className="text-xs py-2"
-              onClick={handleOtwPending}
-              disabled={checkedCount === 0}
+              onClick={isStaffReadOnly ? goToShiftPage : handleOtwPending}
+              disabled={isStaffReadOnly || checkedCount === 0}
             >
               OTW PENDING
             </Button>
             <Button
               variant="danger"
               className="text-xs py-2"
-              onClick={() => setDebtModal(true)}
-              disabled={checkedCount === 0}
+              onClick={isStaffReadOnly ? goToShiftPage : () => setDebtModal(true)}
+              disabled={isStaffReadOnly || checkedCount === 0}
             >
               HUTANG
             </Button>
             <Button
               variant="primary"
               className="text-xs py-2"
-              onClick={() => setPayModal(true)}
-              disabled={checkedCount === 0}
+              onClick={isStaffReadOnly ? goToShiftPage : () => setPayModal(true)}
+              disabled={isStaffReadOnly || checkedCount === 0}
               icon={<CreditCard size={14} />}
             >
               BAYAR
@@ -727,6 +766,8 @@ function PendingView({
   onRefetch,
   branchId,
   userId,
+  isReadOnly,
+  onLockedAction,
   onRefresh,
 }: {
   items: {
@@ -742,6 +783,8 @@ function PendingView({
   onRefetch: () => void
   branchId: string
   userId: string
+  isReadOnly: boolean
+  onLockedAction: () => void
   onRefresh: () => void
 }) {
   const qc = useQueryClient()
@@ -760,6 +803,10 @@ function PendingView({
   }
 
   const handlePayPending = async (method: PaymentMethod) => {
+    if (isReadOnly) {
+      onLockedAction()
+      return
+    }
     if (selectedItemsList.length === 0) {
       toast.error('Pilih item yang ingin dibayar')
       return
@@ -808,6 +855,10 @@ function PendingView({
   }
 
   const handleDebtPending = async () => {
+    if (isReadOnly) {
+      onLockedAction()
+      return
+    }
     if (selectedItemsList.length === 0) {
       toast.error('Pilih item yang ingin dijadikan hutang')
       return

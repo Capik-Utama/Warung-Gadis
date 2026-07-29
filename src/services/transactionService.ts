@@ -1,6 +1,7 @@
 import { supabase } from '@/config/supabase'
 import type { Transaction, TransactionItem, PaymentMethod } from '@/types'
 import { generateCode } from '@/utils/format'
+import { ensureStaffWriteAccess } from '@/services/accessGuardService'
 
 export async function fetchTransactions(branchId: string): Promise<Transaction[]> {
   let query = supabase
@@ -45,6 +46,8 @@ export async function createTransaction(payload: {
   status: 'pending' | 'paid' | 'debt'
   notes?: string
 }): Promise<Transaction> {
+  await ensureStaffWriteAccess()
+
   const totalAmount = payload.items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
   const paidAmount = payload.paidAmount ?? 0
 
@@ -122,6 +125,8 @@ export async function payTransactionItems(
   paidAmount: number,
   userId: string, // Staff who receives the payment
 ): Promise<void> {
+  await ensureStaffWriteAccess()
+
   // Mark items as paid
   const { error } = await supabase
     .from('transaction_items')
@@ -156,6 +161,8 @@ export async function markTransactionAsDebt(
   customerPhone: string,
   customerAddress?: string,
 ): Promise<void> {
+  await ensureStaffWriteAccess()
+
   const { error } = await supabase
     .from('transactions')
     .update({ 
@@ -179,6 +186,8 @@ export async function cancelTransactionItems(
   branchId: string,
   userId: string,
 ): Promise<void> {
+  await ensureStaffWriteAccess()
+
   // Mark items as cancelled
   const { error } = await supabase
     .from('transaction_items')
@@ -237,6 +246,8 @@ export async function cancelTransactionItems(
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
+  await ensureStaffWriteAccess()
+
   const { error } = await supabase.from('transactions').delete().eq('id', id)
   if (error) throw error
 }

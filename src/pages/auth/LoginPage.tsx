@@ -3,28 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
-import { fetchBranches } from '@/services/branchService'
 import { loginUser } from '@/services/userService'
-import { supabase } from '@/config/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { WGLogo } from '@/components/shared/Logo'
-import type { Branch } from '@/types'
-
-type Step = 'login' | 'branch'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { setUser, setSelectedBranch, setPermissions } = useAuthStore()
 
-  const [step, setStep] = useState<Step>('login')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [branches, setBranches] = useState<Branch[]>([])
-  const [tempUser, setTempUser] = useState<ReturnType<typeof useAuthStore.getState>['user']>(null)
-  const [tempPerms, setTempPerms] = useState<string[]>([])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,37 +26,17 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { user, permissions } = await loginUser({ name: name.trim(), password })
-      
-      // Jika Developer atau Manager, langsung masuk tanpa pilih cabang
-      if (user.role === 'developer' || user.role === 'manager') {
-        setUser(user)
-        setPermissions(permissions as any)
-        setSelectedBranch(null) // null berarti semua cabang
-        toast.success(`Selamat datang, ${user.name}!`)
-        navigate('/')
-        return
-      }
 
-      // Jika Staff, harus pilih cabang
-      setTempUser(user)
-      setTempPerms(permissions)
-      const branchList = await fetchBranches()
-      setBranches(branchList)
-      setStep('branch')
+      setUser(user)
+      setPermissions(permissions as any)
+      setSelectedBranch(null)
+      toast.success(`Selamat datang, ${user.name}!`)
+      navigate('/')
     } catch {
       toast.error('Nama atau password salah')
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleSelectBranch = (branch: Branch | null) => {
-    if (!tempUser) return
-    setUser(tempUser)
-    setPermissions(tempPerms as Parameters<typeof setPermissions>[0])
-    setSelectedBranch(branch)
-    toast.success(`Selamat datang, ${tempUser.name}!`)
-    navigate('/')
   }
 
   return (
@@ -87,91 +58,49 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {step === 'login' ? (
-          <div className="card p-6 animate-slide-up">
-            <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
-              Masuk ke Akun
-            </h2>
-            <form onSubmit={handleLogin} className="space-y-4">
+        <div className="card p-6 animate-slide-up">
+          <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+            Masuk ke Akun
+          </h2>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <Input
+              label="Nama"
+              type="text"
+              placeholder="Masukkan nama Anda"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              leftIcon={<Coffee size={16} />}
+              autoFocus
+            />
+            <div className="relative">
               <Input
-                label="Nama"
-                type="text"
-                placeholder="Masukkan nama Anda"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                leftIcon={<Coffee size={16} />}
-                autoFocus
+                label="Password"
+                type={showPw ? 'text' : 'password'}
+                placeholder="Masukkan password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="p-1"
+                  >
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
               />
-              <div className="relative">
-                <Input
-                  label="Password"
-                  type={showPw ? 'text' : 'password'}
-                  placeholder="Masukkan password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                      className="p-1"
-                    >
-                      {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  }
-                />
-              </div>
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full mt-2"
-                loading={loading}
-                size="lg"
-              >
-                Masuk
-              </Button>
-            </form>
-
-
-          </div>
-        ) : (
-          <div className="card p-6 animate-slide-up">
-            <h2 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-              Pilih Cabang
-            </h2>
-            <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-              Pilih cabang tempat Anda bertugas
-            </p>
-            <div className="space-y-2">
-              {branches.map((branch) => (
-                <button
-                  key={branch.id}
-                  onClick={() => handleSelectBranch(branch)}
-                  className="w-full text-left p-4 rounded-xl border transition-all hover:border-blue-400 hover:shadow-soft"
-                  style={{
-                    background: 'var(--bg-primary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  <p className="font-semibold">{branch.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    {branch.address}
-                  </p>
-                </button>
-              ))}
-              {tempUser?.role === 'developer' && (
-                <button
-                  onClick={() => handleSelectBranch(null)}
-                  className="w-full text-left p-4 rounded-xl border-2 border-dashed transition-all hover:border-blue-400"
-                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}
-                >
-                  <p className="font-semibold">Semua Cabang</p>
-                  <p className="text-xs mt-0.5">Lihat seluruh data</p>
-                </button>
-              )}
             </div>
-          </div>
-        )}
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full mt-2"
+              loading={loading}
+              size="lg"
+            >
+              Masuk
+            </Button>
+          </form>
+        </div>
 
         <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
           © 2026 Warung Gadis - By Capik
