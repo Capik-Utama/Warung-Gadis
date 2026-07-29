@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undef
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
-    '[WG POS] Supabase environment variables are missing.\n' +
+    '[Warung Gadis] Supabase environment variables are missing.\n' +
     'Create a .env.local file from .env.example and set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.\n' +
     'The application will not be able to load or save data until these are configured.',
   )

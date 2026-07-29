@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'WG POS – Warung Gadis',
-        short_name: 'WG POS',
+        name: 'Warung Gadis – Warung Gadis',
+        short_name: 'Warung Gadis',
         description: 'Ngopi • Nongkrong • Karaoke • Nobar',
         theme_color: '#2563eb',
         background_color: '#ffffff',

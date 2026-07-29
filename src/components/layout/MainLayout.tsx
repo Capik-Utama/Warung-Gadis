@@ -27,7 +27,7 @@ export const MainLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
 
-  const title = PAGE_TITLES[pathname] ?? 'WG POS'
+  const title = PAGE_TITLES[pathname] ?? 'Warung Gadis'
 
   // Handle viewport height changes on mobile (browser chrome show/hide)
   useEffect(() => {

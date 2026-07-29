@@ -1,5 +1,5 @@
 -- ============================================================
--- WG POS – Warung Gadis
+-- Warung Gadis – Warung Gadis
 -- Database Migration v1.0
 -- Supabase PostgreSQL
 -- ============================================================

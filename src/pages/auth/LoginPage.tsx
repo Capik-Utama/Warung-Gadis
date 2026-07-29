@@ -80,7 +80,7 @@ export default function LoginPage() {
             <WGLogo size={80} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            WG POS
+            Warung Gadis
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             Ngopi • Nongkrong • Karaoke • Nobar
