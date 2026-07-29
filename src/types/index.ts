@@ -60,7 +60,6 @@ export interface Product {
   name: string
   category_id: string
   category?: Category
-  sku: string | null
   capital_price: number
   base_price: number
   stock: number
@@ -81,18 +80,6 @@ export interface ProductPrice {
   updated_at: string
 }
 
-// ─── Supplier ───────────────────────────────────────────────────────────────
-
-export interface Supplier {
-  id: string
-  name: string
-  address: string
-  phone: string
-  notes: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
 
 // ─── Stock ──────────────────────────────────────────────────────────────────
 
@@ -108,8 +95,6 @@ export interface StockLog {
   notes: string | null
   user_id: string
   user?: User
-  supplier_id: string | null
-  supplier?: Supplier
   created_at: string
 }
 
@@ -297,7 +282,6 @@ export type PermissionKey =
   | 'manage_users'
   | 'manage_branches'
   | 'manage_categories'
-  | 'manage_suppliers'
   | 'delete_transaction'
   | 'backup_restore'
   | 'close_warung'

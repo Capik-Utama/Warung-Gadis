@@ -17,7 +17,6 @@ const UNITS = ['pcs', 'kg', 'gram', 'liter', 'ml', 'pack', 'box', 'dus', 'botol'
 const defaultForm: Partial<Product> = {
   name: '',
   category_id: '',
-  sku: '',
   capital_price: 0,
   base_price: 0,
   stock: 0,
@@ -92,7 +91,6 @@ export default function ProdukPage() {
     setForm({
       name: product.name,
       category_id: product.category_id,
-      sku: product.sku ?? '',
       capital_price: product.capital_price,
       base_price: product.base_price,
       stock: product.stock,
@@ -154,7 +152,6 @@ export default function ProdukPage() {
                       </div>
                       <div>
                         <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                        {p.sku && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.sku}</p>}
                       </div>
                     </div>
                   </td>
@@ -217,12 +214,6 @@ export default function ProdukPage() {
             onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
             placeholder="Pilih kategori"
-          />
-          <Input
-            label="SKU"
-            value={form.sku ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
-            placeholder="Kode produk"
           />
           <Input
             label="Modal (Rp)"

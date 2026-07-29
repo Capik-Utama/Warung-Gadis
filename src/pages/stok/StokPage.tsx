@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { fetchStockLogs, addStock } from '@/services/stockService'
 import { fetchProducts } from '@/services/productService'
-import { fetchSuppliers } from '@/services/supplierService'
 import { getActiveShift } from '@/services/shiftService'
 import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
@@ -29,11 +28,10 @@ export default function StokPage() {
   const isStaffReadOnly = isStaff && (!activeShift || !branchId)
 
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ product_id: '', type: 'in' as 'in'|'out'|'adjustment', quantity: 1, notes: '', supplier_id: '' })
+  const [form, setForm] = useState({ product_id: '', type: 'in' as 'in'|'out'|'adjustment', quantity: 1, notes: '' })
 
   const { data: logs = [], isLoading } = useQuery({ queryKey: ['stock-logs', branchId], queryFn: () => fetchStockLogs(branchId), enabled: !!branchId })
   const { data: products = [] } = useQuery({ queryKey: ['products', branchId], queryFn: () => fetchProducts(branchId) })
-  const { data: suppliers = [] } = useQuery({ queryKey: ['suppliers'], queryFn: fetchSuppliers })
 
   const lowStock = products.filter(p => p.stock <= p.min_stock)
 
@@ -41,7 +39,7 @@ export default function StokPage() {
     mutationFn: () => {
       if (!form.product_id) throw new Error('Pilih produk')
       if (!user || !branchId) throw new Error('Session tidak valid')
-      return addStock({ ...form, user_id: user.id, branch_id: branchId, supplier_id: form.supplier_id || undefined })
+      return addStock({ ...form, user_id: user.id, branch_id: branchId })
     },
     onSuccess: () => { toast.success('Stok diperbarui'); qc.invalidateQueries({ queryKey: ['stock-logs'] }); qc.invalidateQueries({ queryKey: ['products'] }); setModal(false) },
     onError: (e: Error) => toast.error(e.message),
@@ -108,7 +106,6 @@ export default function StokPage() {
           <Select label="Produk *" value={form.product_id} onChange={e => setForm(f => ({ ...f, product_id: e.target.value }))} options={products.map(p => ({ value: p.id, label: `${p.name} (Stok: ${p.stock})` }))} placeholder="Pilih produk" />
           <Select label="Jenis" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as 'in'|'out'|'adjustment' }))} options={[{ value: 'in', label: 'Stok Masuk' }, { value: 'out', label: 'Stok Keluar' }, { value: 'adjustment', label: 'Penyesuaian' }]} />
           <Input label="Jumlah *" type="number" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))} />
-          <Select label="Supplier" value={form.supplier_id} onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))} options={suppliers.map(s => ({ value: s.id, label: s.name }))} placeholder="Pilih supplier (opsional)" />
           <Input label="Keterangan" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
         </div>
       </Modal>

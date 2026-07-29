@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { supabase } from '@/config/supabase'
 
 const ORDERED_TABLES = [
-  'branches', 'categories', 'users', 'products', 'suppliers', 
+  'branches', 'categories', 'users', 'products',
   'product_prices', 'stock_logs', 'transactions', 'transaction_items', 
   'debts', 'debt_payments', 'shifts', 'shift_handovers', 'user_permissions'
 ]
@@ -16,7 +16,6 @@ const SHEET_MAPPING: Record<string, string> = {
   'Kategori': 'categories',
   'User': 'users',
   'Produk': 'products',
-  'Supplier': 'suppliers',
   'Harga_Produk': 'product_prices',
   'Log_Stok': 'stock_logs',
   'Transaksi': 'transactions',

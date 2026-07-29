@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, ShoppingCart, Package, Tag, Truck, BarChart3,
+  LayoutDashboard, ShoppingCart, Package, Tag, BarChart3,
   Users, GitBranch, Settings, Database, Palette, Clock,
   TrendingUp, CreditCard, LogOut, ChevronLeft, ChevronRight,
   AlertTriangle, X,
@@ -22,7 +22,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { key: 'kasir', label: 'Kasir', path: '/kasir', icon: <ShoppingCart size={18} /> },
   { key: 'produk', label: 'Produk', path: '/produk', icon: <Package size={18} /> },
   { key: 'kategori', label: 'Kategori', path: '/kategori', icon: <Tag size={18} /> },
-  { key: 'supplier', label: 'Supplier', path: '/supplier', icon: <Truck size={18} /> },
   { key: 'stok', label: 'Stok', path: '/stok', icon: <BarChart3 size={18} /> },
   { key: 'transaksi', label: 'Transaksi', path: '/transaksi', icon: <CreditCard size={18} /> },
   { key: 'hutang', label: 'Hutang', path: '/hutang', icon: <AlertTriangle size={18} /> },
