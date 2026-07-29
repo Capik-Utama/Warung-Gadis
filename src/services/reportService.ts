@@ -1,5 +1,6 @@
 import { supabase } from '@/config/supabase'
 import type { DailySales, TopProduct, StaffSales } from '@/types'
+import { getDayStartISO } from '@/utils/format'
 
 export async function getDailySales(branchId: string, days = 30): Promise<DailySales[]> {
   const since = new Date()
@@ -55,15 +56,15 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
   })).sort((a, b) => a.date.localeCompare(b.date))
 }
 
-export async function getTodayStats(branchId: string) {
-  const today = new Date().toISOString().slice(0, 10)
+export async function getTodayStats(branchId: string, resetHour = 0) {
+  const since = getDayStartISO(resetHour)
 
   // Get paid transactions
   let trxQuery = supabase
     .from('transactions')
     .select('total_amount, status')
     .eq('status', 'paid')
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', since)
 
   if (branchId) {
     trxQuery = trxQuery.eq('branch_id', branchId)
@@ -76,7 +77,7 @@ export async function getTodayStats(branchId: string) {
   let payQuery = supabase
     .from('debt_payments')
     .select('amount')
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', since)
 
   if (branchId) {
     payQuery = payQuery.eq('branch_id', branchId)
@@ -166,8 +167,8 @@ export async function getTopProducts(branchId: string, limit = 10): Promise<TopP
     .slice(0, limit)
 }
 
-export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
-  const today = new Date().toISOString().slice(0, 10)
+export async function getStaffSales(branchId: string, resetHour = 0): Promise<StaffSales[]> {
+  const since = getDayStartISO(resetHour)
 
   // 1. Get direct sales
   const { data: sales, error: salesError } = await supabase
@@ -175,7 +176,7 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
     .select('user_id, total_amount, user:users(name)')
     .eq('branch_id', branchId)
     .eq('status', 'paid')
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', since)
 
   if (salesError) throw salesError
 
@@ -184,7 +185,7 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
     .from('debt_payments')
     .select('user_id, amount, user:users(name)')
     .eq('branch_id', branchId)
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', since)
 
   if (debtError) throw debtError
 
@@ -303,8 +304,8 @@ export async function getLowStockByBranch(branchId: string) {
 }
 
 // Ambil statistik hari ini untuk staf tertentu di cabang tertentu
-export async function getTodayStaffStats(branchId: string, userId: string) {
-  const today = new Date().toISOString().slice(0, 10)
+export async function getTodayStaffStats(branchId: string, userId: string, resetHour = 0) {
+  const since = getDayStartISO(resetHour)
 
   // Get paid transactions by this staff
   let trxQuery = supabase
@@ -312,7 +313,7 @@ export async function getTodayStaffStats(branchId: string, userId: string) {
     .select('total_amount')
     .eq('status', 'paid')
     .eq('user_id', userId)
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', since)
 
   if (branchId) {
     trxQuery = trxQuery.eq('branch_id', branchId)
@@ -326,7 +327,7 @@ export async function getTodayStaffStats(branchId: string, userId: string) {
     .from('debt_payments')
     .select('amount')
     .eq('user_id', userId)
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', since)
 
   if (branchId) {
     payQuery = payQuery.eq('branch_id', branchId)

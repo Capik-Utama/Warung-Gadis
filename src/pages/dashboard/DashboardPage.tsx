@@ -8,6 +8,7 @@ import {
 import { StatCard } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { useAuthStore } from '@/store/authStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches, getTodayStaffStats } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
@@ -18,11 +19,12 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 // Owner / Manager dashboard
 function OwnerDashboard() {
   const { selectedBranch } = useAuthStore()
+  const { dailyResetHour } = useSettingsStore()
   const branchId = selectedBranch?.id ?? ''
 
   const { data: todayStats } = useQuery({
-    queryKey: ['today-stats', branchId],
-    queryFn: () => getTodayStats(branchId),
+    queryKey: ['today-stats', branchId, dailyResetHour],
+    queryFn: () => getTodayStats(branchId, dailyResetHour),
     refetchInterval: 30_000,
   })
 
@@ -299,6 +301,7 @@ function OwnerDashboard() {
 // Staff dashboard
 function StaffDashboard() {
   const { selectedBranch, user } = useAuthStore()
+  const { dailyResetHour } = useSettingsStore()
   const branchId = selectedBranch?.id ?? ''
   const userId = user?.id ?? ''
   const { data: activeShift } = useQuery({
@@ -310,8 +313,8 @@ function StaffDashboard() {
   const isReadOnly = !activeShift || !branchId
 
   const { data: todayStaffStats } = useQuery({
-    queryKey: ['today-staff-stats', branchId, userId],
-    queryFn: () => getTodayStaffStats(branchId, userId),
+    queryKey: ['today-staff-stats', branchId, userId, dailyResetHour],
+    queryFn: () => getTodayStaffStats(branchId, userId, dailyResetHour),
     refetchInterval: 30_000,
     enabled: !!branchId && !!userId,
   })

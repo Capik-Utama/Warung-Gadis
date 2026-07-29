@@ -6,10 +6,12 @@ import { StatCard } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 export default function LaporanPage() {
   const { selectedBranch } = useAuthStore()
+  const { dailyResetHour } = useSettingsStore()
   const branchId = selectedBranch?.id ?? ''
   const [range, setRange] = useState<'7' | '30' | '90'>('30')
 
@@ -26,8 +28,8 @@ export default function LaporanPage() {
   })
 
   const { data: staffSales = [] } = useQuery({
-    queryKey: ['staff-sales', branchId],
-    queryFn: () => getStaffSales(branchId),
+    queryKey: ['staff-sales', branchId, dailyResetHour],
+    queryFn: () => getStaffSales(branchId, dailyResetHour),
     enabled: !!branchId,
   })
 

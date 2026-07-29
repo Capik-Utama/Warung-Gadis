@@ -76,3 +76,21 @@ export function slugify(str: string): string {
 export function parseRupiahInput(value: string): number {
   return parseInt(value.replace(/\D/g, ''), 10) || 0
 }
+
+/**
+ * Mengembalikan ISO string waktu mulai "hari kerja" saat ini
+ * berdasarkan jam reset yang dikonfigurasi.
+ *
+ * Contoh: resetHour = 6
+ *   - Pukul 05:30 → hari kerja dimulai pukul 06:00 kemarin
+ *   - Pukul 10:00 → hari kerja dimulai pukul 06:00 hari ini
+ */
+export function getDayStartISO(resetHour = 0): string {
+  const now = new Date()
+  const start = new Date(now)
+  start.setHours(resetHour, 0, 0, 0)
+  if (now.getHours() < resetHour) {
+    start.setDate(start.getDate() - 1)
+  }
+  return start.toISOString()
+}

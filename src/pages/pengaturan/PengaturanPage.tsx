@@ -1,10 +1,55 @@
 import React from 'react'
-import { Settings, Store, Bell, Shield, Info } from 'lucide-react'
+import { Settings, Store, Bell, Shield, Info, Clock } from 'lucide-react'
+import { useSettingsStore } from '@/store/settingsStore'
 
 export default function PengaturanPage() {
+  const { dailyResetHour, setDailyResetHour } = useSettingsStore()
+
+  const hourOptions = Array.from({ length: 24 }, (_, i) => i)
+
   return (
     <div className="space-y-5">
       <div><h1 className="page-title">Pengaturan</h1><p className="page-subtitle">Konfigurasi aplikasi</p></div>
+
+      {/* Reset Pendapatan Harian */}
+      <div className="card p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2.5 rounded-xl bg-blue-50">
+            <Clock size={20} className="text-blue-500" />
+          </div>
+          <div>
+            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Reset Pendapatan Harian</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Jam mulai perhitungan pendapatan harian
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {hourOptions.map((h) => (
+            <button
+              key={h}
+              onClick={() => setDailyResetHour(h)}
+              className="w-14 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: dailyResetHour === h ? 'var(--accent-primary)' : 'var(--bg-primary)',
+                color: dailyResetHour === h ? 'white' : 'var(--text-secondary)',
+                border: `1px solid ${dailyResetHour === h ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+              }}
+            >
+              {String(h).padStart(2, '0')}:00
+            </button>
+          ))}
+        </div>
+
+        <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {dailyResetHour === 0
+            ? 'Pencatatan reset setiap tengah malam (00:00).'
+            : `Pencatatan reset setiap pukul ${String(dailyResetHour).padStart(2, '0')}:00.`}
+          {' '}Pendapatan "hari ini" dihitung sejak jam tersebut.
+        </p>
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-4">
         {[
           { icon: <Store size={20} />, title: 'Profil Warung', desc: 'Nama, alamat, dan kontak warung', bg: 'bg-blue-50', color: 'text-blue-500' },
