@@ -60,14 +60,13 @@ export default function KasirPage() {
 
   const branchId = selectedBranch?.id ?? ''
   const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
-  const isStaff = user?.role === 'staff'
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => getActiveShift(user!.id),
-    enabled: !!user && isStaff,
+    enabled: !!user,
     refetchInterval: 30_000,
   })
-  const isStaffReadOnly = isStaff && (!activeShift || !branchId)
+  const isReadOnly = !activeShift || !branchId
 
   const goToShiftPage = useCallback(() => {
     toast(STAFF_SHIFT_REQUIRED_MESSAGE)
@@ -168,7 +167,7 @@ export default function KasirPage() {
 
   // OTW PENDING
   const handleOtwPending = useCallback(() => {
-    if (isStaffReadOnly) {
+    if (isReadOnly) {
       goToShiftPage()
       return
     }
@@ -207,12 +206,12 @@ export default function KasirPage() {
         error: (e: Error) => e.message,
       },
     )
-  }, [isStaffReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc])
+  }, [isReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc])
 
   // BAYAR
   const payMutation = useMutation({
     mutationFn: async () => {
-      if (isStaffReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+      if (isReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dibayar')
 
@@ -247,7 +246,7 @@ export default function KasirPage() {
   // HUTANG
   const debtMutation = useMutation({
     mutationFn: async () => {
-      if (isStaffReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+      if (isReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
@@ -307,7 +306,7 @@ export default function KasirPage() {
         />
       </div>
 
-      {isStaffReadOnly && (
+      {isReadOnly && (
         <div className="card p-4 border-l-4 border-amber-400">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -369,7 +368,7 @@ export default function KasirPage() {
             onRefetch={refetchPending}
             branchId={branchId}
             userId={user?.id ?? ''}
-            isReadOnly={isStaffReadOnly}
+            isReadOnly={isReadOnly}
             onLockedAction={goToShiftPage}
             onRefresh={() => {
               refetchPending()
@@ -511,24 +510,24 @@ export default function KasirPage() {
             <Button
               variant="success"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : handleOtwPending}
-              disabled={isStaffReadOnly || checkedCount === 0}
+              onClick={isReadOnly ? goToShiftPage : handleOtwPending}
+              disabled={isReadOnly || checkedCount === 0}
             >
               OTW PENDING
             </Button>
             <Button
               variant="danger"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : () => setDebtModal(true)}
-              disabled={isStaffReadOnly || checkedCount === 0}
+              onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
+              disabled={isReadOnly || checkedCount === 0}
             >
               HUTANG
             </Button>
             <Button
               variant="primary"
               className="text-xs py-2"
-              onClick={isStaffReadOnly ? goToShiftPage : () => setPayModal(true)}
-              disabled={isStaffReadOnly || checkedCount === 0}
+              onClick={isReadOnly ? goToShiftPage : () => setPayModal(true)}
+              disabled={isReadOnly || checkedCount === 0}
               icon={<CreditCard size={14} />}
             >
               BAYAR

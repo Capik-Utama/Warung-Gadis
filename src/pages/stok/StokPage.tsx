@@ -19,14 +19,13 @@ export default function StokPage() {
   const { user, selectedBranch } = useAuthStore()
   const qc = useQueryClient()
   const branchId = selectedBranch?.id ?? ''
-  const isStaff = user?.role === 'staff'
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => getActiveShift(user!.id),
-    enabled: !!user && isStaff,
+    enabled: !!user,
     refetchInterval: 30_000,
   })
-  const isStaffReadOnly = isStaff && (!activeShift || !branchId)
+  const isReadOnly = !activeShift || !branchId
 
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ product_id: '', type: 'in' as 'in'|'out'|'adjustment', quantity: 1, notes: '', supplier_id: '' })
@@ -54,17 +53,17 @@ export default function StokPage() {
         <Button
           variant="primary"
           icon={<Plus size={16} />}
-          onClick={isStaffReadOnly ? () => {
+          onClick={isReadOnly ? () => {
             toast(STAFF_SHIFT_REQUIRED_MESSAGE)
             navigate('/shift')
           } : () => setModal(true)}
-          disabled={isStaffReadOnly}
+          disabled={isReadOnly}
         >
           Tambah Stok
         </Button>
       </div>
 
-      {isStaffReadOnly && (
+      {isReadOnly && (
         <div className="card p-4 border-l-4 border-amber-400">
           <p className="font-semibold text-amber-700">Belum Masuk Shift / Read Only</p>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>

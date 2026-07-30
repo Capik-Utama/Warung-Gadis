@@ -10,9 +10,10 @@ export async function ensureStaffWriteAccess(): Promise<void> {
     throw new Error('Session tidak valid')
   }
 
-  if (user.role !== 'staff') {
-    return
-  }
+  // Semua role (developer, manager, staff) wajib masuk shift sebelum transaksi
+  // if (user.role !== 'staff') {
+  //   return
+  // }
 
   if (!selectedBranch?.id) {
     throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)

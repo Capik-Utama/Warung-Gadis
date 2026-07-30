@@ -3,18 +3,35 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trash2, Eye, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchTransactions, deleteTransaction } from '@/services/transactionService'
+import { getActiveShift } from '@/services/shiftService'
+import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { statusBadge } from '@/components/ui/Badge'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
+import { useNavigate } from 'react-router-dom'
 import type { Transaction } from '@/types'
 
 export default function TransaksiPage() {
-  const { selectedBranch, hasPermission } = useAuthStore()
+  const navigate = useNavigate()
+  const { user, selectedBranch, hasPermission } = useAuthStore()
   const qc = useQueryClient()
+
   const branchId = selectedBranch?.id ?? ''
+  const { data: activeShift } = useQuery({
+    queryKey: ['active-shift', user?.id],
+    queryFn: () => getActiveShift(user!.id),
+    enabled: !!user,
+    refetchInterval: 30_000,
+  })
+  const isReadOnly = !activeShift || !branchId
+
+  const goToShiftPage = () => {
+    toast(STAFF_SHIFT_REQUIRED_MESSAGE)
+    navigate('/shift')
+  }
   const [search, setSearch] = useState('')
   const [detail, setDetail] = useState<Transaction | null>(null)
   const [del, setDel] = useState<Transaction | null>(null)
@@ -50,7 +67,14 @@ export default function TransaksiPage() {
                   <td>
                     <div className="flex gap-1">
                       <button onClick={() => setDetail(t)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500"><Eye size={15} /></button>
-                      {hasPermission('delete_transaction') && <button onClick={() => setDel(t)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={15} /></button>}
+                      {hasPermission('delete_transaction') && (
+                        <button 
+                          onClick={isReadOnly ? goToShiftPage : () => setDel(t)} 
+                          className={`p-1.5 rounded-lg transition-colors ${isReadOnly ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:bg-red-50 text-red-500'}`}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

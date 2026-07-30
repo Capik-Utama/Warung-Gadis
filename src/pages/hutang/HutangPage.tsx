@@ -3,11 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { DollarSign, MapPinned, ChevronDown, ChevronUp, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchDebts, fetchPaidDebts, payDebt, fetchDebtPayments } from '@/services/debtService'
+import { getActiveShift } from '@/services/shiftService'
+import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { statusBadge } from '@/components/ui/Badge'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
+import { useNavigate } from 'react-router-dom'
 import type { Debt, DebtPayment } from '@/types'
 
 interface GroupedDebt {
@@ -19,8 +22,23 @@ interface GroupedDebt {
 }
 
 export default function HutangPage() {
+  const navigate = useNavigate()
   const { user, selectedBranch } = useAuthStore()
   const qc = useQueryClient()
+
+  const branchId = selectedBranch?.id ?? ''
+  const { data: activeShift } = useQuery({
+    queryKey: ['active-shift', user?.id],
+    queryFn: () => getActiveShift(user!.id),
+    enabled: !!user,
+    refetchInterval: 30_000,
+  })
+  const isReadOnly = !activeShift || !branchId
+
+  const goToShiftPage = () => {
+    toast(STAFF_SHIFT_REQUIRED_MESSAGE)
+    navigate('/shift')
+  }
   const [payModal, setPayModal] = useState(false)
   const [selected, setSelected] = useState<Debt | null>(null)
   const [payAmount, setPayAmount] = useState('')
@@ -328,13 +346,14 @@ export default function HutangPage() {
                           </div>
                         )}
 
-                        {debt.status !== 'paid' && (
+                          {debt.status !== 'paid' && (
                           <Button
                             variant="success"
                             size="sm"
                             className="w-full"
                             icon={<DollarSign size={14} />}
-                            onClick={() => openPay(debt)}
+                            onClick={isReadOnly ? goToShiftPage : () => openPay(debt)}
+                            disabled={isReadOnly}
                           >
                             Bayar Hutang
                           </Button>
