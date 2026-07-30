@@ -57,16 +57,19 @@ export default function UserPage() {
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error('Nama wajib diisi')
       
+      // Separate permissions from user data
+      const { permissions, ...userData } = form
+      
       let savedUser: User
       if (editing) {
-        savedUser = await updateUser(editing.id, form)
+        savedUser = await updateUser(editing.id, userData)
       } else {
         if (!form.password) throw new Error('Password wajib diisi')
-        savedUser = await createUser(form)
+        savedUser = await createUser(userData)
       }
       
       // Save permissions
-      await saveUserPermissions(savedUser.id, form.permissions)
+      await saveUserPermissions(savedUser.id, permissions)
       return savedUser
     },
     onSuccess: () => { 
