@@ -371,7 +371,7 @@ function StaffDashboard() {
       <div className="grid grid-cols-2 gap-4">
         {/* Box 1: Kasir */}
         <Link
-          to={isReadOnly ? '/shift' : '/kasir'}
+          to="/kasir"
           className="stat-card cursor-pointer transition-all hover:shadow-md"
         >
           <div className="flex items-start justify-between">
@@ -383,10 +383,10 @@ function StaffDashboard() {
           <div>
             <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Kasir</p>
             <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              {isReadOnly ? 'Belum Masuk Shift' : 'Mulai Transaksi'}
+              Mulai Transaksi
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {isReadOnly ? 'Arahkan ke masuk shift' : 'Buka menu kasir'}
+              Buka menu kasir
             </p>
           </div>
         </Link>
