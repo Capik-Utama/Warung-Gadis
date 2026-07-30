@@ -282,6 +282,8 @@ export interface PaginatedResponse<T> {
 // ─── Permission keys ────────────────────────────────────────────────────────
 
 export type PermissionKey =
+  | 'access_kasir'
+  | 'access_hutang'
   | 'add_product'
   | 'edit_product'
   | 'delete_product'

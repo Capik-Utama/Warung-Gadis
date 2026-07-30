@@ -27,7 +27,7 @@ const defaultForm: Partial<Product> = {
 }
 
 export default function ProdukPage() {
-  const { selectedBranch } = useAuthStore()
+  const { selectedBranch, hasPermission } = useAuthStore()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
@@ -36,6 +36,9 @@ export default function ProdukPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null)
 
   const branchId = selectedBranch?.id ?? ''
+  const canAdd = hasPermission('add_product')
+  const canEdit = hasPermission('edit_product')
+  const canDelete = hasPermission('delete_product')
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products', branchId],
@@ -110,11 +113,13 @@ export default function ProdukPage() {
           <h1 className="page-title">Produk</h1>
           <p className="page-subtitle">{products.length} produk terdaftar</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="primary" icon={<Plus size={16} />} onClick={openAdd}>
-            Tambah
-          </Button>
-        </div>
+        {canAdd && (
+          <div className="flex gap-2">
+            <Button variant="primary" icon={<Plus size={16} />} onClick={openAdd}>
+              Tambah
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Search */}
@@ -172,12 +177,16 @@ export default function ProdukPage() {
                   <td>{statusBadge(p.is_active ? 'active' : 'inactive')}</td>
                   <td>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => setDeleteConfirm(p)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500">
-                        <Trash2 size={15} />
-                      </button>
+                      {canEdit && (
+                        <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500">
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => setDeleteConfirm(p)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500">
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

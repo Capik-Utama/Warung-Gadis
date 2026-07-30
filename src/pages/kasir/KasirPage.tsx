@@ -43,7 +43,8 @@ function useFavorites(userId: string) {
 
 export default function KasirPage() {
   const navigate = useNavigate()
-  const { user, selectedBranch } = useAuthStore()
+  const { user, selectedBranch, hasPermission } = useAuthStore()
+  const canAccessKasir = hasPermission('access_kasir')
   const cart = useCartStore()
   const qc = useQueryClient()
 
@@ -293,6 +294,18 @@ export default function KasirPage() {
   })
 
   // ─── RENDER ───
+
+  if (!canAccessKasir) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+          <ShoppingCart size={32} className="text-red-500" />
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Akses Ditolak</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>Anda tidak memiliki hak akses untuk menggunakan Kasir.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3 h-full">

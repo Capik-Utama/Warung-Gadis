@@ -246,7 +246,7 @@ export async function cancelTransactionItems(
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  await ensureStaffWriteAccess()
+  await ensureStaffWriteAccess('delete_transaction')
 
   const { error } = await supabase.from('transactions').delete().eq('id', id)
   if (error) throw error

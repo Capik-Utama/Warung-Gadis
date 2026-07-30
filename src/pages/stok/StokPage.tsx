@@ -16,7 +16,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function StokPage() {
   const navigate = useNavigate()
-  const { user, selectedBranch } = useAuthStore()
+  const { user, selectedBranch, hasPermission } = useAuthStore()
   const qc = useQueryClient()
   const branchId = selectedBranch?.id ?? ''
   const { data: activeShift } = useQuery({
@@ -25,7 +25,8 @@ export default function StokPage() {
     enabled: !!user,
     refetchInterval: 30_000,
   })
-  const isReadOnly = !activeShift || !branchId
+  const canAddStock = hasPermission('add_stock')
+  const isReadOnly = !activeShift || !branchId || !canAddStock
 
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ product_id: '', type: 'in' as 'in'|'out'|'adjustment', quantity: 1, notes: '', supplier_id: '' })

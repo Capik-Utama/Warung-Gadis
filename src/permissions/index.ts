@@ -30,7 +30,21 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
     'user',
     'shift',
   ],
-  staff: ['dashboard', 'kasir', 'hutang', 'stok', 'shift'],
+  staff: ['dashboard', 'shift'],
+}
+
+// Map menu keys to required permissions (optional, if not in ROLE_MENUS)
+export const MENU_PERMISSIONS: Record<string, PermissionKey[]> = {
+  kasir: ['access_kasir'],
+  hutang: ['access_hutang'],
+  produk: ['add_product', 'edit_product', 'delete_product'],
+  kategori: ['manage_categories'],
+  supplier: ['manage_suppliers'],
+  stok: ['add_stock'],
+  laporan: ['view_report'],
+  user: ['manage_users'],
+  cabang: ['manage_branches'],
+  backup: ['backup_restore'],
 }
 
 // Default permissions per role
@@ -57,20 +71,13 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     'close_warung',
     'add_staff',
   ],
-  manager: [
-    'add_product',
-    'edit_product',
-    'add_stock',
-    'input_expense',
-    'view_report',
-    'manage_suppliers',
-    'manage_categories',
-    'export_data',
-  ],
+  manager: [],
   staff: [],
 }
 
 export const ALL_PERMISSIONS: Array<{ key: PermissionKey; label: string }> = [
+  { key: 'access_kasir', label: 'Akses Kasir' },
+  { key: 'access_hutang', label: 'Akses Hutang' },
   { key: 'add_product', label: 'Tambah Produk' },
   { key: 'edit_product', label: 'Edit Produk' },
   { key: 'delete_product', label: 'Hapus Produk' },

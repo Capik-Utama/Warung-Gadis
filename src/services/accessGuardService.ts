@@ -1,19 +1,30 @@
 import { supabase } from '@/config/supabase'
 import { useAuthStore } from '@/store/authStore'
+import type { PermissionKey } from '@/types'
 
 export const STAFF_SHIFT_REQUIRED_MESSAGE = 'Masuk shift dulu untuk melakukan transaksi.'
 
-export async function ensureStaffWriteAccess(): Promise<void> {
+export async function ensurePermission(key: PermissionKey): Promise<void> {
+  const { hasPermission } = useAuthStore.getState()
+  if (!hasPermission(key)) {
+    throw new Error('Anda tidak memiliki hak akses untuk aksi ini')
+  }
+}
+
+export async function ensureStaffWriteAccess(permissionKey?: PermissionKey): Promise<void> {
   const { user, selectedBranch } = useAuthStore.getState()
 
   if (!user) {
     throw new Error('Session tidak valid')
   }
 
-  // Semua role (developer, manager, staff) wajib masuk shift sebelum transaksi
-  // if (user.role !== 'staff') {
-  //   return
-  // }
+  // Jika ada permissionKey, cek dulu
+  if (permissionKey) {
+    const { hasPermission } = useAuthStore.getState()
+    if (!hasPermission(permissionKey)) {
+      throw new Error('Anda tidak memiliki hak akses untuk aksi ini')
+    }
+  }
 
   if (!selectedBranch?.id) {
     throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)

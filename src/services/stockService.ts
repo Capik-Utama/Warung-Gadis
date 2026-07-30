@@ -22,7 +22,7 @@ export async function addStock(payload: {
   user_id: string
   supplier_id?: string
 }): Promise<void> {
-  await ensureStaffWriteAccess()
+  await ensureStaffWriteAccess('add_stock')
 
   // Insert log
   const { error: logError } = await supabase.from('stock_logs').insert(payload)

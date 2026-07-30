@@ -9,7 +9,8 @@ import { useAuthStore } from '@/store/authStore'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 export default function LaporanPage() {
-  const { selectedBranch } = useAuthStore()
+  const { selectedBranch, hasPermission } = useAuthStore()
+  const canViewReport = hasPermission('view_report')
   const branchId = selectedBranch?.id ?? ''
   const [range, setRange] = useState<'7' | '30' | '90'>('30')
 
@@ -52,6 +53,18 @@ export default function LaporanPage() {
     a.href = url
     a.download = `${filename}.csv`
     a.click()
+  }
+
+  if (!canViewReport) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+          <TrendingUp size={32} className="text-red-500" />
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Akses Ditolak</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>Anda tidak memiliki hak akses untuk melihat laporan.</p>
+      </div>
+    )
   }
 
   return (

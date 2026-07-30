@@ -1,5 +1,6 @@
 import { supabase } from '@/config/supabase'
 import type { Product, ProductPrice } from '@/types'
+import { ensurePermission } from './accessGuardService'
 
 export async function fetchProducts(branchId?: string): Promise<Product[]> {
   const { data, error } = await supabase
@@ -28,6 +29,7 @@ export async function fetchProducts(branchId?: string): Promise<Product[]> {
 export async function createProduct(
   payload: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'category'>,
 ): Promise<Product> {
+  await ensurePermission('add_product')
   const { data, error } = await supabase
     .from('products')
     .insert(payload)
@@ -38,6 +40,7 @@ export async function createProduct(
 }
 
 export async function updateProduct(id: string, payload: Partial<Product>): Promise<Product> {
+  await ensurePermission('edit_product')
   const { data, error } = await supabase
     .from('products')
     .update(payload)
@@ -49,6 +52,7 @@ export async function updateProduct(id: string, payload: Partial<Product>): Prom
 }
 
 export async function deleteProduct(id: string): Promise<void> {
+  await ensurePermission('delete_product')
   const { error } = await supabase.from('products').delete().eq('id', id)
   if (error) throw error
 }
@@ -58,6 +62,7 @@ export async function setBranchPrice(
   branchId: string,
   price: number,
 ): Promise<void> {
+  await ensurePermission('edit_price')
   const { error } = await supabase
     .from('product_prices')
     .upsert({ product_id: productId, branch_id: branchId, price }, { onConflict: 'product_id,branch_id' })

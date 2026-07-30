@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { AppLogo, WGLogo } from '@/components/shared/Logo'
 import { useAuthStore } from '@/store/authStore'
-import { ROLE_MENUS } from '@/permissions'
+import { ROLE_MENUS, MENU_PERMISSIONS } from '@/permissions'
 
 interface NavItem {
   key: string
@@ -43,11 +43,20 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
-  const { user, logout } = useAuthStore()
+  const { user, logout, hasPermission } = useAuthStore()
   const navigate = useNavigate()
 
-  const allowedKeys = ROLE_MENUS[user?.role ?? 'staff'] ?? []
-  const navItems = ALL_NAV_ITEMS.filter((item) => allowedKeys.includes(item.key))
+  const roleAllowedKeys = ROLE_MENUS[user?.role ?? 'staff'] ?? []
+  const navItems = ALL_NAV_ITEMS.filter((item) => {
+    // Check if allowed by role
+    if (roleAllowedKeys.includes(item.key)) return true
+
+    // Check if allowed by specific permissions
+    const requiredPerms = MENU_PERMISSIONS[item.key]
+    if (requiredPerms && requiredPerms.some(p => hasPermission(p))) return true
+
+    return false
+  })
 
   const handleLogout = () => {
     logout()
