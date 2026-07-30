@@ -51,7 +51,7 @@ export const MainLayout: React.FC = () => {
       className="flex overflow-hidden w-full"
       style={{ 
         background: 'var(--bg-primary)',
-        height: '100dvh', // Use dynamic viewport height for better mobile support
+        height: '100dvh', // Modern dynamic viewport height
       }}
     >
       <Sidebar

@@ -1,11 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import legacy from '@vitejs/plugin-legacy'
 import path from 'path'
 
 export default defineConfig({
   plugins: [
     react(),
+    legacy({
+      targets: ['> 0.5%', 'last 2 versions', 'Firefox ESR', 'not dead', 'chrome 64', 'android >= 6'],
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -36,11 +40,17 @@ export default defineConfig({
     }),
   ],
   build: {
-    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
     minify: 'terser',
     terserOptions: {
       compress: { drop_console: false },
       output: { comments: false },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
     },
   },
   server: {
