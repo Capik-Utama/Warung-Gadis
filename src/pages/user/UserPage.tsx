@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Search, Shield, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -20,7 +20,6 @@ interface UserForm {
   is_active: boolean
   branch_id: string | null
   avatar_url: string | null
-  permissions: PermissionKey[]
 }
 
 const defaultForm: UserForm = {
@@ -32,7 +31,6 @@ const defaultForm: UserForm = {
   is_active: true,
   branch_id: null,
   avatar_url: null,
-  permissions: ROLE_DEFAULT_PERMISSIONS['staff'],
 }
 
 export default function UserPage() {
@@ -40,8 +38,10 @@ export default function UserPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
+  const [permModal, setPermModal] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState<UserForm>(defaultForm)
+  const [perms, setPerms] = useState<PermissionKey[]>([])
   const [del, setDel] = useState<User | null>(null)
 
   const { data: users = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
@@ -57,25 +57,33 @@ export default function UserPage() {
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error('Nama wajib diisi')
       
-      // Separate permissions from user data
-      const { permissions, ...userData } = form
-      
       let savedUser: User
       if (editing) {
-        savedUser = await updateUser(editing.id, userData)
+        savedUser = await updateUser(editing.id, form)
       } else {
         if (!form.password) throw new Error('Password wajib diisi')
-        savedUser = await createUser(userData)
+        savedUser = await createUser(form)
+        // For new user, save default permissions
+        await saveUserPermissions(savedUser.id, ROLE_DEFAULT_PERMISSIONS[form.role])
       }
-      
-      // Save permissions
-      await saveUserPermissions(savedUser.id, permissions)
       return savedUser
     },
     onSuccess: () => { 
-      toast.success('User dan hak akses disimpan')
+      toast.success('User berhasil disimpan')
       qc.invalidateQueries({ queryKey: ['users'] })
       setModal(false) 
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const savePermsMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) return
+      await saveUserPermissions(editing.id, perms)
+    },
+    onSuccess: () => {
+      toast.success('Hak akses diperbarui')
+      setPermModal(false)
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -88,13 +96,12 @@ export default function UserPage() {
 
   const openAdd = () => { 
     setEditing(null)
-    setForm({ ...defaultForm, permissions: [...ROLE_DEFAULT_PERMISSIONS['staff']] })
+    setForm(defaultForm)
     setModal(true) 
   }
 
-  const openEdit = async (u: User) => { 
+  const openEdit = (u: User) => { 
     setEditing(u)
-    const perms = await getUserPermissions(u.id)
     setForm({ 
       name: u.name, 
       address: u.address, 
@@ -104,26 +111,19 @@ export default function UserPage() {
       is_active: u.is_active, 
       branch_id: u.branch_id, 
       avatar_url: u.avatar_url,
-      permissions: perms.length > 0 ? perms : [...ROLE_DEFAULT_PERMISSIONS[u.role]]
     })
     setModal(true) 
   }
 
-  const handleRoleChange = (newRole: UserRole) => {
-    setForm(f => ({ 
-      ...f, 
-      role: newRole,
-      permissions: [...ROLE_DEFAULT_PERMISSIONS[newRole]]
-    }))
+  const openPerms = async (u: User) => {
+    setEditing(u)
+    const userPerms = await getUserPermissions(u.id)
+    setPerms(userPerms.length > 0 ? userPerms : [...ROLE_DEFAULT_PERMISSIONS[u.role]])
+    setPermModal(true)
   }
 
   const togglePerm = (key: PermissionKey) => {
-    setForm(f => ({
-      ...f,
-      permissions: f.permissions.includes(key) 
-        ? f.permissions.filter(p => p !== key) 
-        : [...f.permissions, key]
-    }))
+    setPerms(prev => prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key])
   }
 
   return (
@@ -158,9 +158,10 @@ export default function UserPage() {
                 <div className="flex gap-1">
                   {(currentUser?.role === 'developer' || (currentUser?.role === 'manager' && u.role !== 'developer')) && (
                     <>
-                      <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit & Hak Akses"><Pencil size={18} /></button>
+                      <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit Data"><Pencil size={18} /></button>
+                      <button onClick={() => openPerms(u)} className="p-2 rounded-xl bg-amber-50 text-amber-500 hover:bg-amber-100" title="Hak Akses"><Shield size={18} /></button>
                       {u.id !== currentUser.id && u.role !== 'developer' && (
-                        <button onClick={() => setDel(u)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100"><Trash2 size={18} /></button>
+                        <button onClick={() => setDel(u)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100" title="Hapus"><Trash2 size={18} /></button>
                       )}
                     </>
                   )}
@@ -185,32 +186,38 @@ export default function UserPage() {
         )}
       </div>
 
-      <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit User & Hak Akses' : 'Tambah User & Hak Akses'} size="lg"
+      {/* Modal Edit Data */}
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit Data User' : 'Tambah User Baru'} size="md"
         footer={<><Button variant="secondary" onClick={() => setModal(false)}>Batal</Button><Button variant="primary" loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>Simpan</Button></>}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h3 className="font-bold border-b pb-2" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>Informasi Dasar</h3>
-            <Input label="Nama *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            <Input label="Alamat" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
-            <Input label="Nomor HP" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-            <Select label="Role" value={form.role} onChange={e => handleRoleChange(e.target.value as UserRole)}
-              options={[
-                ...(currentUser?.role === 'developer' ? [{ value: 'developer', label: 'Developer' }] : []),
-                { value: 'manager', label: 'Manager' },
-                { value: 'staff', label: 'Staff' }
-              ]} />
-            <Input label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4" />
-              <label htmlFor="active" className="text-sm" style={{ color: 'var(--text-secondary)' }}>User aktif</label>
-            </div>
+        <div className="space-y-4">
+          <Input label="Nama *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          <Input label="Alamat" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+          <Input label="Nomor HP" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+          <Select label="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}
+            options={[
+              ...(currentUser?.role === 'developer' ? [{ value: 'developer', label: 'Developer' }] : []),
+              { value: 'manager', label: 'Manager' },
+              { value: 'staff', label: 'Staff' }
+            ]} 
+            disabled={editing?.role === 'developer' && currentUser?.role !== 'developer'}
+          />
+          <Input label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4" />
+            <label htmlFor="active" className="text-sm" style={{ color: 'var(--text-secondary)' }}>User aktif</label>
           </div>
+        </div>
+      </Modal>
 
+      {/* Modal Hak Akses */}
+      <Modal isOpen={permModal} onClose={() => setPermModal(false)} title={`Hak Akses: ${editing?.name}`} size="md"
+        footer={<><Button variant="secondary" onClick={() => setPermModal(false)}>Batal</Button><Button variant="primary" loading={savePermsMutation.isPending} onClick={() => savePermsMutation.mutate()}>Simpan Perubahan</Button></>}>
+        {editing?.role === 'staff' ? (
           <div className="space-y-4">
-            <h3 className="font-bold border-b pb-2" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>Hak Akses (Centang)</h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Tentukan fitur apa saja yang dapat diakses oleh staff ini.</p>
             <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
               {ALL_PERMISSIONS.map(perm => {
-                const isSelected = form.permissions.includes(perm.key)
+                const isSelected = perms.includes(perm.key)
                 return (
                   <label key={perm.key} className="flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all hover:bg-gray-50" 
                     style={{ 
@@ -229,7 +236,15 @@ export default function UserPage() {
               })}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center opacity-60">
+            <Shield size={48} className="mb-4 text-blue-500" />
+            <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Akses Penuh</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Role {editing?.role === 'developer' ? 'Developer' : 'Manager'} memiliki semua hak akses secara sistem dan tidak perlu dikelola secara manual.
+            </p>
+          </div>
+        )}
       </Modal>
 
       {/* Delete Confirm */}

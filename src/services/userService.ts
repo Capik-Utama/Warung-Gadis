@@ -14,7 +14,7 @@ export async function loginUser(
 
   const { data, error } = await supabase
     .from('users')
-    .select('*')
+    .select('id, name, phone, address, role, branch_id, avatar_url, is_active, created_at, updated_at')
     .ilike('name', credentials.name.trim())
     .eq('password_hash', hash)
     .eq('is_active', true)
@@ -40,7 +40,7 @@ export async function loginUser(
 export async function fetchUsers(): Promise<User[]> {
   const { data, error } = await supabase
     .from('users')
-    .select('*')
+    .select('id, name, phone, address, role, branch_id, avatar_url, is_active, created_at, updated_at')
     .order('name')
   if (error) throw error
   return data as User[]

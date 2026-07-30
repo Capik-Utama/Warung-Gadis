@@ -56,6 +56,8 @@ export const MENU_PERMISSIONS: Record<string, PermissionKey[]> = {
 // Default permissions per role
 export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
   developer: [
+    'access_kasir',
+    'access_hutang',
     'add_product',
     'edit_product',
     'delete_product',
@@ -78,6 +80,8 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     'add_staff',
   ],
   manager: [
+    'access_kasir',
+    'access_hutang',
     'add_product',
     'edit_product',
     'delete_product',

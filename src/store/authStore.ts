@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, Branch, PermissionKey } from '@/types'
+import type { User, Branch, PermissionKey, UserRole } from '@/types'
+import { ROLE_DEFAULT_PERMISSIONS } from '@/permissions'
 
 interface AuthStore {
   user: User | null
@@ -33,8 +34,12 @@ export const useAuthStore = create<AuthStore>()(
       hasPermission: (key) => {
         const { user, permissions } = get()
         if (!user) return false
-        if (user.role === 'developer') return true
-        return permissions.includes(key)
+        if (user.role === 'developer' || user.role === 'manager') return true
+        
+        // Check custom permissions first, then fallback to defaults for the role
+        if (permissions.includes(key)) return true
+        const defaults = ROLE_DEFAULT_PERMISSIONS[user.role as UserRole] || []
+        return defaults.includes(key)
       },
 
       isDeveloper: () => get().user?.role === 'developer',
