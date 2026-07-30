@@ -1,5 +1,5 @@
 import { supabase } from '@/config/supabase'
-import type { User, UserRole, PermissionKey } from '@/types'
+import type { User, UserRole, PermissionKey, UserBranch } from '@/types'
 import { ROLE_DEFAULT_PERMISSIONS } from '@/permissions'
 
 export interface LoginCredentials {
@@ -100,6 +100,43 @@ export async function saveUserPermissions(
     const { error } = await supabase.from('user_permissions').insert(rows)
     if (error) throw error
   }
+}
+
+// ─── User Branch Access ─────────────────────────────────────
+
+export async function fetchUserBranches(userId: string): Promise<UserBranch[]> {
+  const { data, error } = await supabase
+    .from('user_branches')
+    .select('id, user_id, branch_id, created_at')
+    .eq('user_id', userId)
+  if (error) throw error
+  return data as UserBranch[]
+}
+
+export async function saveUserBranches(
+  userId: string,
+  branchIds: string[],
+): Promise<void> {
+  await supabase.from('user_branches').delete().eq('user_id', userId)
+  if (branchIds.length > 0) {
+    const rows = branchIds.map((bid) => ({ user_id: userId, branch_id: bid }))
+    const { error } = await supabase.from('user_branches').insert(rows)
+    if (error) throw error
+  }
+}
+
+export async function isUserAllowedAtBranch(
+  userId: string,
+  branchId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('user_branches')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('branch_id', branchId)
+    .maybeSingle()
+  if (error) return false
+  return !!data
 }
 
 /**

@@ -30,6 +30,12 @@ export async function ensureStaffWriteAccess(permissionKey?: PermissionKey): Pro
     throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
   }
 
+  // Validate staff can access this branch
+  const { isBranchAllowed } = useAuthStore.getState()
+  if (!isBranchAllowed(selectedBranch.id)) {
+    throw new Error('Anda tidak memiliki akses ke cabang ini')
+  }
+
   const { data: activeShift, error } = await supabase
     .from('shifts')
     .select('id, branch_id')

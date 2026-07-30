@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
-import type { Shift } from '@/types'
+import type { Shift, Branch } from '@/types'
 
 export default function ShiftPage() {
   const { user, selectedBranch, setSelectedBranch } = useAuthStore()
@@ -40,6 +40,9 @@ export default function ShiftPage() {
   })
 
   const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
+
+  // Filter branches for staff: only show allowed branches
+  const filteredBranches: Branch[] = branches.filter(b => useAuthStore.getState().isBranchAllowed(b.id))
 
   useEffect(() => {
     if (branchId && !checkInBranchId) {
@@ -138,7 +141,7 @@ export default function ShiftPage() {
               label="Pilih Cabang Shift *"
               value={checkInBranchId}
               onChange={(e) => setCheckInBranchId(e.target.value)}
-              options={branches.map((b) => ({ value: b.id, label: b.name }))}
+              options={filteredBranches.map((b) => ({ value: b.id, label: b.name }))}
               placeholder="Pilih cabang"
             />
             <Button

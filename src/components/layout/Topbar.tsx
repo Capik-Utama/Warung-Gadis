@@ -140,7 +140,14 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     }
   }
 
-  const branchOptions = branches.map(b => ({ value: b.id, label: b.name }))
+  // Filter branches for staff: only show allowed branches
+  const allowedBranches = branches.filter(b => {
+    if (!user) return false
+    if (user.role === 'developer' || user.role === 'manager') return true
+    const { allowedBranchIds } = useAuthStore.getState()
+    return allowedBranchIds.includes(b.id)
+  })
+  const branchOptions = allowedBranches.map(b => ({ value: b.id, label: b.name }))
 
   return (
     <header

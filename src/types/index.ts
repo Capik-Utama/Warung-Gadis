@@ -15,6 +15,13 @@ export interface User {
   updated_at: string
 }
 
+export interface UserBranch {
+  id: string
+  user_id: string
+  branch_id: string
+  created_at: string
+}
+
 export interface UserPermission {
   id: string
   user_id: string

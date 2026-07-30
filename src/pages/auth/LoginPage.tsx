@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
-import { loginUser } from '@/services/userService'
+import { loginUser, fetchUserBranches } from '@/services/userService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { WGLogo } from '@/components/shared/Logo'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { setUser, setSelectedBranch, setPermissions } = useAuthStore()
+  const { setUser, setSelectedBranch, setPermissions, setAllowedBranchIds } = useAuthStore()
 
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
@@ -30,6 +30,17 @@ export default function LoginPage() {
       setUser(user)
       setPermissions(permissions as any)
       setSelectedBranch(null)
+      // Load allowed branch IDs for staff (developer/manager get all branches)
+      if (user.role === 'staff') {
+        try {
+          const userBranches = await fetchUserBranches(user.id)
+          setAllowedBranchIds(userBranches.map(ub => ub.branch_id))
+        } catch {
+          setAllowedBranchIds([])
+        }
+      } else {
+        setAllowedBranchIds([])
+      }
       toast.success(`Selamat datang, ${user.name}!`)
       navigate('/')
     } catch {

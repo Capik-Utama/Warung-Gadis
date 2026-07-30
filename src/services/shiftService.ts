@@ -1,7 +1,14 @@
 import { supabase } from '@/config/supabase'
+import { useAuthStore } from '@/store/authStore'
 import type { Shift, ShiftHandover } from '@/types'
 
 export async function checkInShift(userId: string, branchId: string): Promise<Shift> {
+  // Validate staff branch access
+  const auth = useAuthStore.getState()
+  if (!auth.isBranchAllowed(branchId)) {
+    throw new Error('Anda tidak memiliki akses ke cabang ini')
+  }
+
   const { data, error } = await supabase
     .from('shifts')
     .insert({
