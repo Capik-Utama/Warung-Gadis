@@ -19,7 +19,7 @@ const defaultForm: Partial<Product> = {
   category_id: '',
   base_price: 0,
   stock: 0,
-  min_stock: 5,
+  min_stock: 2,
   unit: 'pcs',
   is_active: true,
 }
