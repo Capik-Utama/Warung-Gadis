@@ -470,10 +470,13 @@ function StaffDashboard() {
         <div className="flex-1">
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
             Status Shift
-            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${
-              activeShift ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-            }`}>
-              {activeShift ? 'Sedang Masuk' : 'Off'}
+            <span className={`ml-2 text-sm px-3 py-1 rounded-full font-bold ${
+              activeShift ? 'bg-green-100' : 'bg-red-100'
+            }`} style={{ 
+              color: activeShift ? '#16a34a' : '#dc2626',
+              textShadow: activeShift ? '0 0 8px #22c55e' : '0 0 8px #ef4444'
+            }}>
+              {activeShift ? 'Sedang Mbakul' : 'Sedang Tedung'}
             </span>
           </p>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
