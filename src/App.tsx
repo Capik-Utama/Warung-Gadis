@@ -13,7 +13,6 @@ import DashboardPage from '@/pages/dashboard/DashboardPage'
 import KasirPage from '@/pages/kasir/KasirPage'
 import ProdukPage from '@/pages/produk/ProdukPage'
 import KategoriPage from '@/pages/kategori/KategoriPage'
-import SupplierPage from '@/pages/supplier/SupplierPage'
 import StokPage from '@/pages/stok/StokPage'
 import TransaksiPage from '@/pages/transaksi/TransaksiPage'
 import HutangPage from '@/pages/hutang/HutangPage'
@@ -51,7 +50,6 @@ function App() {
             <Route path="kasir" element={<KasirPage />} />
             <Route path="produk" element={<ProdukPage />} />
             <Route path="kategori" element={<KategoriPage />} />
-            <Route path="supplier" element={<SupplierPage />} />
             <Route path="stok" element={<StokPage />} />
             <Route path="transaksi" element={<TransaksiPage />} />
             <Route path="hutang" element={<HutangPage />} />

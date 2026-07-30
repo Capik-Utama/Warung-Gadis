@@ -17,8 +17,6 @@ const UNITS = ['pcs', 'kg', 'gram', 'liter', 'ml', 'pack', 'box', 'dus', 'botol'
 const defaultForm: Partial<Product> = {
   name: '',
   category_id: '',
-  sku: '',
-  capital_price: 0,
   base_price: 0,
   stock: 0,
   min_stock: 5,
@@ -95,8 +93,6 @@ export default function ProdukPage() {
     setForm({
       name: product.name,
       category_id: product.category_id,
-      sku: product.sku ?? '',
-      capital_price: product.capital_price,
       base_price: product.base_price,
       stock: product.stock,
       min_stock: product.min_stock,
@@ -137,7 +133,6 @@ export default function ProdukPage() {
             <tr>
               <th>Produk</th>
               <th>Kategori</th>
-              <th>Modal</th>
               <th>Harga</th>
               <th>Stok</th>
               <th>Status</th>
@@ -146,9 +141,9 @@ export default function ProdukPage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="text-center py-10"><span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} /></td></tr>
+              <tr><td colSpan={6} className="text-center py-10"><span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} /></td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Tidak ada produk</td></tr>
+              <tr><td colSpan={6} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Tidak ada produk</td></tr>
             ) : (
               filtered.map((p) => (
                 <tr key={p.id}>
@@ -159,12 +154,10 @@ export default function ProdukPage() {
                       </div>
                       <div>
                         <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                        {p.sku && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.sku}</p>}
                       </div>
                     </div>
                   </td>
                   <td style={{ color: 'var(--text-secondary)' }}>{p.category?.name ?? '-'}</td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{formatCurrency(p.capital_price)}</td>
                   <td className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{formatCurrency(p.base_price)}</td>
                   <td>
                     <span
@@ -226,18 +219,6 @@ export default function ProdukPage() {
             onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
             placeholder="Pilih kategori"
-          />
-          <Input
-            label="SKU"
-            value={form.sku ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
-            placeholder="Kode produk"
-          />
-          <Input
-            label="Modal (Rp)"
-            type="number"
-            value={form.capital_price ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, capital_price: parseInt(e.target.value) || 0 }))}
           />
           <Input
             label="Harga Jual (Rp)"

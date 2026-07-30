@@ -20,7 +20,6 @@ export async function addStock(payload: {
   quantity: number
   notes: string
   user_id: string
-  supplier_id?: string
 }): Promise<void> {
   await ensureStaffWriteAccess('add_stock')
 

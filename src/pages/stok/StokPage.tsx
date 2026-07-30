@@ -1,66 +1,112 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, History, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { fetchStockLogs, addStock } from '@/services/stockService'
-import { fetchProducts } from '@/services/productService'
-import { fetchSuppliers } from '@/services/supplierService'
+import { fetchProducts, createProduct } from '@/services/productService'
+import { fetchCategories } from '@/services/categoryService'
+import { fetchBranches } from '@/services/branchService'
 import { getActiveShift } from '@/services/shiftService'
 import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { formatDateTime } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
+
+const UNITS = ['pcs', 'kg', 'gram', 'liter', 'ml', 'pack', 'box', 'dus', 'botol', 'bungkus']
+
+interface ProductForm {
+  name: string
+  category_id: string
+  base_price: number
+  stock: number
+  min_stock: number
+  unit: string
+  is_active: boolean
+  image_url: string | null
+}
 
 export default function StokPage() {
   const navigate = useNavigate()
   const { user, selectedBranch, hasPermission } = useAuthStore()
   const qc = useQueryClient()
   const branchId = selectedBranch?.id ?? ''
+  const isManager = user?.role === 'manager'
+  
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => getActiveShift(user!.id),
     enabled: !!user,
     refetchInterval: 30_000,
   })
+  
   const canAddStock = hasPermission('add_stock')
   const isReadOnly = !activeShift || !branchId || !canAddStock
 
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ product_id: '', type: 'in' as 'in'|'out'|'adjustment', quantity: 1, notes: '', supplier_id: '' })
+  const [form, setForm] = useState<ProductForm>({
+    name: '',
+    category_id: '',
+    base_price: 0,
+    stock: 0,
+    min_stock: 5,
+    unit: 'pcs',
+    is_active: true,
+    image_url: null,
+  })
+  const [selectedBranchId, setSelectedBranchId] = useState(branchId)
 
-  const { data: logs = [], isLoading } = useQuery({ queryKey: ['stock-logs', branchId], queryFn: () => fetchStockLogs(branchId), enabled: !!branchId })
   const { data: products = [] } = useQuery({ queryKey: ['products', branchId], queryFn: () => fetchProducts(branchId) })
-  const { data: suppliers = [] } = useQuery({ queryKey: ['suppliers'], queryFn: fetchSuppliers })
+  const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
+  const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
 
   const lowStock = products.filter(p => p.stock <= p.min_stock)
 
   const addMutation = useMutation({
-    mutationFn: () => {
-      if (!form.product_id) throw new Error('Pilih produk')
-      if (!user || !branchId) throw new Error('Session tidak valid')
-      return addStock({ ...form, user_id: user.id, branch_id: branchId, supplier_id: form.supplier_id || undefined })
+    mutationFn: async () => {
+      if (!form.name.trim()) throw new Error('Nama produk wajib diisi')
+      if (!form.category_id) throw new Error('Kategori wajib dipilih')
+      if (!selectedBranchId) throw new Error('Cabang wajib dipilih')
+      
+      return createProduct({
+        ...form,
+        branch_id: selectedBranchId,
+      })
     },
-    onSuccess: () => { toast.success('Stok diperbarui'); qc.invalidateQueries({ queryKey: ['stock-logs'] }); qc.invalidateQueries({ queryKey: ['products'] }); setModal(false) },
+    onSuccess: () => { 
+      toast.success('Produk berhasil ditambahkan') 
+      qc.invalidateQueries({ queryKey: ['products'] }) 
+      setModal(false)
+      setForm({
+        name: '',
+        category_id: '',
+        base_price: 0,
+        stock: 0,
+        min_stock: 5,
+        unit: 'pcs',
+        is_active: true,
+        image_url: null,
+      })
+    },
     onError: (e: Error) => toast.error(e.message),
   })
+
+  const openModal = () => {
+    if (isReadOnly) {
+      toast(STAFF_SHIFT_REQUIRED_MESSAGE)
+      navigate('/shift')
+      return
+    }
+    setSelectedBranchId(branchId)
+    setModal(true)
+  }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <div><h1 className="page-title">Manajemen Stok</h1><p className="page-subtitle">Riwayat pergerakan stok</p></div>
-        <Button
-          variant="primary"
-          icon={<Plus size={16} />}
-          onClick={isReadOnly ? () => {
-            toast(STAFF_SHIFT_REQUIRED_MESSAGE)
-            navigate('/shift')
-          } : () => setModal(true)}
-          disabled={isReadOnly}
-        >
-          Tambah Stok
+        <div><h1 className="page-title">Manajemen Stok</h1><p className="page-subtitle">Kelola produk dan stok</p></div>
+        <Button variant="primary" icon={<Plus size={16} />} onClick={openModal}>
+          Tambah Produk
         </Button>
       </div>
 
@@ -84,32 +130,76 @@ export default function StokPage() {
 
       <div className="table-container">
         <table className="table">
-          <thead><tr><th>Produk</th><th>Jenis</th><th>Qty</th><th>Petugas</th><th>Keterangan</th><th>Waktu</th></tr></thead>
+          <thead><tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Min</th></tr></thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={6} className="text-center py-10"><span className="loading-spinner" /></td></tr> :
-              logs.length === 0 ? <tr><td colSpan={6} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Belum ada riwayat stok</td></tr> :
-              logs.map(log => (
-                <tr key={log.id}>
-                  <td style={{ color: 'var(--text-primary)' }}>{(log.product as {name:string})?.name ?? '-'}</td>
-                  <td><span className={`badge ${log.type === 'in' ? 'badge-green' : log.type === 'out' ? 'badge-red' : 'badge-yellow'}`}>{log.type === 'in' ? 'Masuk' : log.type === 'out' ? 'Keluar' : 'Penyesuaian'}</span></td>
-                  <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>{log.quantity}</td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{(log.user as {name:string})?.name ?? '-'}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{log.notes ?? '-'}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{formatDateTime(log.created_at)}</td>
+            {products.length === 0 ? (
+              <tr><td colSpan={5} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Belum ada produk</td></tr>
+            ) : (
+              products.map(p => (
+                <tr key={p.id}>
+                  <td style={{ color: 'var(--text-primary)' }}>{p.name}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{p.category?.name ?? '-'}</td>
+                  <td className="font-semibold" style={{ color: 'var(--accent-primary)' }}>Rp {(p.base_price).toLocaleString('id-ID')}</td>
+                  <td className={p.stock <= p.min_stock ? 'text-red-500 font-semibold' : ''}>{p.stock} {p.unit}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{p.min_stock} {p.unit}</td>
                 </tr>
-              ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      <Modal isOpen={modal} onClose={() => setModal(false)} title="Tambah Stok"
+      <Modal isOpen={modal} onClose={() => setModal(false)} title="Tambah Produk" size="lg"
         footer={<><Button variant="secondary" onClick={() => setModal(false)}>Batal</Button><Button variant="primary" loading={addMutation.isPending} onClick={() => addMutation.mutate()}>Simpan</Button></>}>
-        <div className="space-y-4">
-          <Select label="Produk *" value={form.product_id} onChange={e => setForm(f => ({ ...f, product_id: e.target.value }))} options={products.map(p => ({ value: p.id, label: `${p.name} (Stok: ${p.stock})` }))} placeholder="Pilih produk" />
-          <Select label="Jenis" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as 'in'|'out'|'adjustment' }))} options={[{ value: 'in', label: 'Stok Masuk' }, { value: 'out', label: 'Stok Keluar' }, { value: 'adjustment', label: 'Penyesuaian' }]} />
-          <Input label="Jumlah *" type="number" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))} />
-          <Select label="Supplier" value={form.supplier_id} onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))} options={suppliers.map(s => ({ value: s.id, label: s.name }))} placeholder="Pilih supplier (opsional)" />
-          <Input label="Keterangan" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+        <div className="grid grid-cols-2 gap-4">
+          {isManager && !branchId && (
+            <Select 
+              label="Cabang *" 
+              value={selectedBranchId} 
+              onChange={e => setSelectedBranchId(e.target.value)} 
+              options={branches.filter(b => b.is_active).map(b => ({ value: b.id, label: b.name }))} 
+              placeholder="Pilih cabang" 
+            />
+          )}
+          <div className={isManager && !branchId ? '' : 'col-span-2'}>
+            <Input 
+              label="Nama Produk *" 
+              value={form.name} 
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
+              placeholder="Nama produk"
+            />
+          </div>
+          <Select 
+            label="Kategori *" 
+            value={form.category_id} 
+            onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))} 
+            options={categories.map(c => ({ value: c.id, label: c.name }))} 
+            placeholder="Pilih kategori" 
+          />
+          <Input 
+            label="Harga Jual (Rp)" 
+            type="number" 
+            value={form.base_price || ''} 
+            onChange={e => setForm(f => ({ ...f, base_price: parseInt(e.target.value) || 0 }))} 
+          />
+          <Input 
+            label="Stok" 
+            type="number" 
+            value={form.stock || ''} 
+            onChange={e => setForm(f => ({ ...f, stock: parseInt(e.target.value) || 0 }))} 
+          />
+          <Input 
+            label="Minimum Stok" 
+            type="number" 
+            value={form.min_stock || ''} 
+            onChange={e => setForm(f => ({ ...f, min_stock: parseInt(e.target.value) || 0 }))} 
+          />
+          <Select 
+            label="Satuan" 
+            value={form.unit} 
+            onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} 
+            options={UNITS.map(u => ({ value: u, label: u }))} 
+          />
         </div>
       </Modal>
     </div>

@@ -27,12 +27,16 @@ export async function fetchProducts(branchId?: string): Promise<Product[]> {
 }
 
 export async function createProduct(
-  payload: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'category'>,
+  payload: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'category'> & { branch_id?: string },
 ): Promise<Product> {
   await ensurePermission('add_product')
+  
+  // Remove branch_id from payload as it's not part of products table
+  const { branch_id: _, ...productPayload } = payload
+  
   const { data, error } = await supabase
     .from('products')
-    .insert(payload)
+    .insert(productPayload)
     .select()
     .single()
   if (error) throw error
