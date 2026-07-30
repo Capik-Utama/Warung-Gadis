@@ -522,7 +522,7 @@ export default function KasirPage() {
 
           <div className="grid grid-cols-3 gap-2">
             <Button
-              variant="success"
+              variant="primary"
               className="text-xs py-2"
               onClick={isReadOnly ? goToShiftPage : handleOtwPending}
               disabled={isReadOnly || checkedCount === 0}
@@ -1029,7 +1029,7 @@ function PendingView({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
-              variant="primary"
+              variant="success"
               className="text-xs py-2"
               onClick={() => handlePayPending('cash')}
             >
