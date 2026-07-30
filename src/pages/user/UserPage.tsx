@@ -40,7 +40,6 @@ export default function UserPage() {
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [permModal, setPermModal] = useState(false)
-  const [branchModal, setBranchModal] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState<UserForm>(defaultForm)
   const [perms, setPerms] = useState<PermissionKey[]>([])
@@ -87,23 +86,15 @@ export default function UserPage() {
   const savePermsMutation = useMutation({
     mutationFn: async () => {
       if (!editing) return
-      await saveUserPermissions(editing.id, perms)
+      // Save permissions and branches together
+      await Promise.all([
+        saveUserPermissions(editing.id, perms),
+        editing.role === 'staff' ? saveUserBranches(editing.id, allowedBranchIds) : Promise.resolve(),
+      ])
     },
     onSuccess: () => {
-      toast.success('Hak akses diperbarui')
+      toast.success('Hak akses dan cabang diperbarui')
       setPermModal(false)
-    },
-    onError: (e: Error) => toast.error(e.message),
-  })
-
-  const saveBranchesMutation = useMutation({
-    mutationFn: async () => {
-      if (!editing) return
-      await saveUserBranches(editing.id, allowedBranchIds)
-    },
-    onSuccess: () => {
-      toast.success('Akses cabang diperbarui')
-      setBranchModal(false)
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -139,18 +130,18 @@ export default function UserPage() {
     setEditing(u)
     const userPerms = await getUserPermissions(u.id)
     setPerms(userPerms.length > 0 ? userPerms : [...ROLE_DEFAULT_PERMISSIONS[u.role]])
-    setPermModal(true)
-  }
-
-  const openBranches = async (u: User) => {
-    setEditing(u)
-    try {
-      const userBranches = await fetchUserBranches(u.id)
-      setAllowedBranchIds(userBranches.map(ub => ub.branch_id))
-    } catch {
-      setAllowedBranchIds([])
+    // Load allowed branches for staff (default: all branches)
+    if (u.role === 'staff') {
+      try {
+        const userBranches = await fetchUserBranches(u.id)
+        setAllowedBranchIds(userBranches.map(ub => ub.branch_id))
+      } catch {
+        setAllowedBranchIds(allBranches.map(b => b.id))
+      }
+    } else {
+      setAllowedBranchIds(allBranches.map(b => b.id))
     }
-    setBranchModal(true)
+    setPermModal(true)
   }
 
   const togglePerm = (key: PermissionKey) => {
@@ -203,7 +194,6 @@ export default function UserPage() {
                     <>
                       <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit Data"><Pencil size={18} /></button>
                       <button onClick={() => openPerms(u)} className="p-2 rounded-xl bg-amber-50 text-amber-500 hover:bg-amber-100" title="Hak Akses"><Shield size={18} /></button>
-                      <button onClick={() => openBranches(u)} className="p-2 rounded-xl bg-emerald-50 text-emerald-500 hover:bg-emerald-100" title="Akses Cabang"><MapPin size={18} /></button>
                       {u.id !== currentUser.id && u.role !== 'developer' && (
                         <button onClick={() => setDel(u)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100" title="Hapus"><Trash2 size={18} /></button>
                       )}
@@ -253,31 +243,99 @@ export default function UserPage() {
         </div>
       </Modal>
 
-      {/* Modal Hak Akses */}
+      {/* Modal Hak Akses (Permissions + Branch Access combined) */}
       <Modal isOpen={permModal} onClose={() => setPermModal(false)} title={`Hak Akses: ${editing?.name}`} size="md"
         footer={<><Button variant="secondary" onClick={() => setPermModal(false)}>Batal</Button><Button variant="primary" loading={savePermsMutation.isPending} onClick={() => savePermsMutation.mutate()}>Simpan Perubahan</Button></>}>
         {editing?.role === 'staff' ? (
           <div className="space-y-4">
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Tentukan fitur apa saja yang dapat diakses oleh staff ini.</p>
-            <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
-              {ALL_PERMISSIONS.map(perm => {
-                const isSelected = perms.includes(perm.key)
-                return (
-                  <label key={perm.key} className="flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all hover:bg-gray-50" 
-                    style={{ 
-                      background: isSelected ? 'rgba(37,99,235,0.05)' : 'transparent',
-                      borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-color)'
-                    }}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
-                        {isSelected && <Check size={14} strokeWidth={3} />}
+            {/* Section: Permissions */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Shield size={16} className="text-amber-500" />
+                <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Izin Fitur</h3>
+              </div>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>Tentukan fitur apa saja yang dapat diakses oleh staff ini.</p>
+              <div className="grid grid-cols-1 gap-2 max-h-[250px] overflow-y-auto pr-2">
+                {ALL_PERMISSIONS.map(perm => {
+                  const isSelected = perms.includes(perm.key)
+                  return (
+                    <label key={perm.key} className="flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all hover:bg-gray-50" 
+                      style={{ 
+                        background: isSelected ? 'rgba(37,99,235,0.05)' : 'transparent',
+                        borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-color)'
+                      }}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
+                          {isSelected && <Check size={14} strokeWidth={3} />}
+                        </div>
+                        <span className="text-sm font-medium" style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{perm.label}</span>
                       </div>
-                      <span className="text-sm font-medium" style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{perm.label}</span>
-                    </div>
-                    <input type="checkbox" checked={isSelected} onChange={() => togglePerm(perm.key)} className="hidden" />
-                  </label>
-                )
-              })}
+                      <input type="checkbox" checked={isSelected} onChange={() => togglePerm(perm.key)} className="hidden" />
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t" style={{ borderColor: 'var(--border-color)' }} />
+
+            {/* Section: Branch Access */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin size={16} className="text-emerald-500" />
+                <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Akses Cabang</h3>
+              </div>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+                Pilih cabang mana saja yang boleh diakses oleh staff ini saat masuk shift.
+              </p>
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={selectAllBranches}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-medium"
+                >
+                  Pilih Semua
+                </button>
+                <button
+                  type="button"
+                  onClick={deselectAllBranches}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium"
+                >
+                  Hapus Semua
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2">
+                {allBranches.map(branch => {
+                  const isSelected = allowedBranchIds.includes(branch.id)
+                  return (
+                    <label key={branch.id} className="flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all hover:bg-gray-50" 
+                      style={{ 
+                        background: isSelected ? 'rgba(16,185,129,0.05)' : 'transparent',
+                        borderColor: isSelected ? '#10b981' : 'var(--border-color)'
+                      }}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 bg-white'}`}>
+                          {isSelected && <Check size={14} strokeWidth={3} />}
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium" style={{ color: isSelected ? '#059669' : 'var(--text-primary)' }}>{branch.name}</span>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{branch.address}</p>
+                        </div>
+                      </div>
+                      <input type="checkbox" checked={isSelected} onChange={() => toggleBranch(branch.id)} className="hidden" />
+                    </label>
+                  )
+                })}
+                {allBranches.length === 0 && (
+                  <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>Belum ada cabang terdaftar</p>
+                )}
+              </div>
+              {allowedBranchIds.length === 0 && allBranches.length > 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mt-2">
+                  Peringatan: Staff ini tidak memiliki akses ke cabang manapun. Pilih minimal satu cabang.
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -285,74 +343,7 @@ export default function UserPage() {
             <Shield size={48} className="mb-4 text-blue-500" />
             <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Akses Penuh</p>
             <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Role {editing?.role === 'developer' ? 'Developer' : 'Manager'} memiliki semua hak akses secara sistem dan tidak perlu dikelola secara manual.
-            </p>
-          </div>
-        )}
-      </Modal>
-
-      {/* Modal Akses Cabang */}
-      <Modal isOpen={branchModal} onClose={() => setBranchModal(false)} title={`Akses Cabang: ${editing?.name}`} size="md"
-        footer={<><Button variant="secondary" onClick={() => setBranchModal(false)}>Batal</Button><Button variant="primary" loading={saveBranchesMutation.isPending} onClick={() => saveBranchesMutation.mutate()}>Simpan Perubahan</Button></>}>
-        {editing?.role === 'staff' ? (
-          <div className="space-y-4">
-            <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Pilih cabang mana saja yang boleh diakses oleh staff ini saat masuk shift.
-            </p>
-            <div className="flex gap-2 mb-3">
-              <button
-                type="button"
-                onClick={selectAllBranches}
-                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-medium"
-              >
-                Pilih Semua
-              </button>
-              <button
-                type="button"
-                onClick={deselectAllBranches}
-                className="text-xs px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium"
-              >
-                Hapus Semua
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
-              {allBranches.map(branch => {
-                const isSelected = allowedBranchIds.includes(branch.id)
-                return (
-                  <label key={branch.id} className="flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all hover:bg-gray-50" 
-                    style={{ 
-                      background: isSelected ? 'rgba(16,185,129,0.05)' : 'transparent',
-                      borderColor: isSelected ? '#10b981' : 'var(--border-color)'
-                    }}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 bg-white'}`}>
-                        {isSelected && <Check size={14} strokeWidth={3} />}
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium" style={{ color: isSelected ? '#059669' : 'var(--text-primary)' }}>{branch.name}</span>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{branch.address}</p>
-                      </div>
-                    </div>
-                    <input type="checkbox" checked={isSelected} onChange={() => toggleBranch(branch.id)} className="hidden" />
-                  </label>
-                )
-              })}
-              {allBranches.length === 0 && (
-                <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>Belum ada cabang terdaftar</p>
-              )}
-            </div>
-            {allowedBranchIds.length === 0 && allBranches.length > 0 && (
-              <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                Peringatan: Staff ini tidak memiliki akses ke cabang manapun. Pilih minimal satu cabang.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10 text-center opacity-60">
-            <MapPin size={48} className="mb-4 text-emerald-500" />
-            <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Akses Semua Cabang</p>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Role {editing?.role === 'developer' ? 'Developer' : 'Manager'} memiliki akses ke seluruh cabang secara otomatis dan tidak perlu dikonfigurasi.
+              Role {editing?.role === 'developer' ? 'Developer' : 'Manager'} memiliki semua hak akses dan akses ke seluruh cabang secara otomatis dan tidak perlu dikelola secara manual.
             </p>
           </div>
         )}
