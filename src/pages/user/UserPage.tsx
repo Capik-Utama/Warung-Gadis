@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, Shield } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Shield, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchUsers, createUser, updateUser, deleteUser, getUserPermissions, saveUserPermissions } from '@/services/userService'
 import { Button } from '@/components/ui/Button'
@@ -8,7 +8,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { roleBadge, statusBadge } from '@/components/ui/Badge'
 import { useAuthStore } from '@/store/authStore'
-import { ALL_PERMISSIONS } from '@/permissions'
+import { ALL_PERMISSIONS, ROLE_DEFAULT_PERMISSIONS } from '@/permissions'
 import type { User, PermissionKey, UserRole } from '@/types'
 
 interface UserForm {
@@ -20,6 +20,7 @@ interface UserForm {
   is_active: boolean
   branch_id: string | null
   avatar_url: string | null
+  permissions: PermissionKey[]
 }
 
 const defaultForm: UserForm = {
@@ -31,6 +32,7 @@ const defaultForm: UserForm = {
   is_active: true,
   branch_id: null,
   avatar_url: null,
+  permissions: ROLE_DEFAULT_PERMISSIONS['staff'],
 }
 
 export default function UserPage() {
@@ -38,16 +40,12 @@ export default function UserPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
-  const [permModal, setPermModal] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
-  const [form, setForm] = useState<typeof defaultForm>(defaultForm)
+  const [form, setForm] = useState<UserForm>(defaultForm)
   const [del, setDel] = useState<User | null>(null)
-  const [permUser, setPermUser] = useState<User | null>(null)
-  const [selectedPerms, setSelectedPerms] = useState<PermissionKey[]>([])
 
   const { data: users = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
   
-  // Filter: Manager/Staff tidak bisa melihat akun Developer
   const visibleUsers = users.filter(u => {
     if (currentUser?.role !== 'developer' && u.role === 'developer') return false
     return true
@@ -56,13 +54,26 @@ export default function UserPage() {
   const filtered = visibleUsers.filter(u => u.name.toLowerCase().includes(search.toLowerCase()))
 
   const saveMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!form.name.trim()) throw new Error('Nama wajib diisi')
-      if (editing) return updateUser(editing.id, form)
-      if (!form.password) throw new Error('Password wajib diisi')
-      return createUser(form)
+      
+      let savedUser: User
+      if (editing) {
+        savedUser = await updateUser(editing.id, form)
+      } else {
+        if (!form.password) throw new Error('Password wajib diisi')
+        savedUser = await createUser(form)
+      }
+      
+      // Save permissions
+      await saveUserPermissions(savedUser.id, form.permissions)
+      return savedUser
     },
-    onSuccess: () => { toast.success('User disimpan'); qc.invalidateQueries({ queryKey: ['users'] }); setModal(false) },
+    onSuccess: () => { 
+      toast.success('User dan hak akses disimpan')
+      qc.invalidateQueries({ queryKey: ['users'] })
+      setModal(false) 
+    },
     onError: (e: Error) => toast.error(e.message),
   })
 
@@ -72,23 +83,44 @@ export default function UserPage() {
     onError: (e: Error) => toast.error(e.message),
   })
 
-  const permMutation = useMutation({
-    mutationFn: () => saveUserPermissions(permUser!.id, selectedPerms),
-    onSuccess: () => { toast.success('Hak akses disimpan'); setPermModal(false) },
-    onError: (e: Error) => toast.error(e.message),
-  })
+  const openAdd = () => { 
+    setEditing(null)
+    setForm({ ...defaultForm, permissions: [...ROLE_DEFAULT_PERMISSIONS['staff']] })
+    setModal(true) 
+  }
 
-  const openAdd = () => { setEditing(null); setForm(defaultForm); setModal(true) }
-  const openEdit = (u: User) => { setEditing(u); setForm({ name: u.name, address: u.address, phone: u.phone, role: u.role, password: '', is_active: u.is_active, branch_id: u.branch_id, avatar_url: u.avatar_url }); setModal(true) }
-  const openPerms = async (u: User) => {
-    setPermUser(u)
+  const openEdit = async (u: User) => { 
+    setEditing(u)
     const perms = await getUserPermissions(u.id)
-    setSelectedPerms(perms)
-    setPermModal(true)
+    setForm({ 
+      name: u.name, 
+      address: u.address, 
+      phone: u.phone, 
+      role: u.role, 
+      password: '', 
+      is_active: u.is_active, 
+      branch_id: u.branch_id, 
+      avatar_url: u.avatar_url,
+      permissions: perms.length > 0 ? perms : [...ROLE_DEFAULT_PERMISSIONS[u.role]]
+    })
+    setModal(true) 
+  }
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setForm(f => ({ 
+      ...f, 
+      role: newRole,
+      permissions: [...ROLE_DEFAULT_PERMISSIONS[newRole]]
+    }))
   }
 
   const togglePerm = (key: PermissionKey) => {
-    setSelectedPerms(prev => prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key])
+    setForm(f => ({
+      ...f,
+      permissions: f.permissions.includes(key) 
+        ? f.permissions.filter(p => p !== key) 
+        : [...f.permissions, key]
+    }))
   }
 
   return (
@@ -123,8 +155,7 @@ export default function UserPage() {
                 <div className="flex gap-1">
                   {(currentUser?.role === 'developer' || (currentUser?.role === 'manager' && u.role !== 'developer')) && (
                     <>
-                      <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100"><Pencil size={18} /></button>
-                      <button onClick={() => openPerms(u)} className="p-2 rounded-xl bg-purple-50 text-purple-500 hover:bg-purple-100" title="Hak akses"><Shield size={18} /></button>
+                      <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit & Hak Akses"><Pencil size={18} /></button>
                       {u.id !== currentUser.id && u.role !== 'developer' && (
                         <button onClick={() => setDel(u)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100"><Trash2 size={18} /></button>
                       )}
@@ -151,40 +182,50 @@ export default function UserPage() {
         )}
       </div>
 
-      <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit User' : 'Tambah User'}
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit User & Hak Akses' : 'Tambah User & Hak Akses'} size="lg"
         footer={<><Button variant="secondary" onClick={() => setModal(false)}>Batal</Button><Button variant="primary" loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>Simpan</Button></>}>
-        <div className="space-y-4">
-          <Input label="Nama *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          <Input label="Alamat" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
-          <Input label="Nomor HP" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-          <Select label="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as 'developer'|'manager'|'staff' }))}
-            options={[
-              ...(currentUser?.role === 'developer' ? [{ value: 'developer', label: 'Developer' }] : []),
-              { value: 'manager', label: 'Manager' },
-              { value: 'staff', label: 'Staff' }
-            ]} />
-          <Input label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4" />
-            <label htmlFor="active" className="text-sm" style={{ color: 'var(--text-secondary)' }}>User aktif</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h3 className="font-bold border-b pb-2" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>Informasi Dasar</h3>
+            <Input label="Nama *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            <Input label="Alamat" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+            <Input label="Nomor HP" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            <Select label="Role" value={form.role} onChange={e => handleRoleChange(e.target.value as UserRole)}
+              options={[
+                ...(currentUser?.role === 'developer' ? [{ value: 'developer', label: 'Developer' }] : []),
+                { value: 'manager', label: 'Manager' },
+                { value: 'staff', label: 'Staff' }
+              ]} />
+            <Input label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4" />
+              <label htmlFor="active" className="text-sm" style={{ color: 'var(--text-secondary)' }}>User aktif</label>
+            </div>
           </div>
-        </div>
-      </Modal>
 
-      {/* Permissions Modal */}
-      <Modal isOpen={permModal} onClose={() => setPermModal(false)} title={`Hak Akses: ${permUser?.name}`} size="lg"
-        footer={<><Button variant="secondary" onClick={() => setPermModal(false)}>Batal</Button><Button variant="primary" loading={permMutation.isPending} onClick={() => permMutation.mutate()}>Simpan</Button></>}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pr-2">
-          {ALL_PERMISSIONS.map(perm => (
-            <label key={perm.key} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all" 
-              style={{ 
-                background: selectedPerms.includes(perm.key) ? 'rgba(37,99,235,0.05)' : 'var(--bg-primary)',
-                borderColor: selectedPerms.includes(perm.key) ? 'var(--accent-primary)' : 'var(--border-color)'
-              }}>
-              <input type="checkbox" checked={selectedPerms.includes(perm.key)} onChange={() => togglePerm(perm.key)} className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{perm.label}</span>
-            </label>
-          ))}
+          <div className="space-y-4">
+            <h3 className="font-bold border-b pb-2" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>Hak Akses (Centang)</h3>
+            <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
+              {ALL_PERMISSIONS.map(perm => {
+                const isSelected = form.permissions.includes(perm.key)
+                return (
+                  <label key={perm.key} className="flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all hover:bg-gray-50" 
+                    style={{ 
+                      background: isSelected ? 'rgba(37,99,235,0.05)' : 'transparent',
+                      borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-color)'
+                    }}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
+                        {isSelected && <Check size={14} strokeWidth={3} />}
+                      </div>
+                      <span className="text-sm font-medium" style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{perm.label}</span>
+                    </div>
+                    <input type="checkbox" checked={isSelected} onChange={() => togglePerm(perm.key)} className="hidden" />
+                  </label>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </Modal>
 
