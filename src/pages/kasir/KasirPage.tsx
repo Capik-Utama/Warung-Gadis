@@ -197,6 +197,7 @@ export default function KasirPage() {
         loading: 'Memproses pending...',
         success: () => {
           toast.success(`${checkedCount} item masuk pending!`)
+          cart.clearCart()
           setPayModal(false)
           setDebtModal(false)
           refetchPending()
