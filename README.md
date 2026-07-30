@@ -134,10 +134,24 @@ cp .env.example .env.local
 
 Di Supabase SQL Editor, jalankan secara berurutan:
 
-```
+```sql
+-- 1. Skema Awal
 supabase/migrations/001_initial_schema.sql
+
+-- 2. Kebijakan Keamanan (RLS)
 supabase/migrations/002_rls_policies.sql
+
+-- 3. Data Awal (Seed)
 supabase/migrations/003_seed_data.sql
+
+-- 4. Penambahan Alamat Pelanggan di Hutang
+supabase/migrations/002_add_debt_customer_address.sql
+
+-- 5. Pembersihan Supplier & SKU
+supabase/migrations/004_remove_supplier_sku_modal.sql
+
+-- 6. Fitur Akses Cabang User (PENTING: Perbaikan Error user_branches)
+supabase/migrations/005_add_user_branches.sql
 ```
 
 ### 4. Jalankan Development Server
