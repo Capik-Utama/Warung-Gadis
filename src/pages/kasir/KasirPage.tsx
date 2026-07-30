@@ -89,16 +89,16 @@ export default function KasirPage() {
     name.toLowerCase().includes(debtName.toLowerCase())
   )
 
+  // Load products (all branches when no branch selected)
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products', branchId],
     queryFn: () => fetchProducts(branchId),
   })
 
-  // Fetch pending transactions
+  // Fetch pending transactions (all branches when no branch selected)
   const { data: pendingTransactions = [], refetch: refetchPending } = useQuery({
     queryKey: ['pending-transactions', branchId],
     queryFn: () => fetchPendingTransactions(branchId),
-    enabled: !!branchId,
   })
 
   // Flatten pending items
@@ -112,6 +112,7 @@ export default function KasirPage() {
       unit_price: number
       subtotal: number
       code: string
+      branch_id: string
     }[] = []
     pendingTransactions.forEach((trx) => {
       (trx.items ?? []).forEach((item: TransactionItem) => {
@@ -125,6 +126,7 @@ export default function KasirPage() {
             unit_price: item.unit_price,
             subtotal: item.subtotal,
             code: trx.code,
+            branch_id: trx.branch_id,
           })
         }
       })
@@ -309,9 +311,12 @@ export default function KasirPage() {
         <div className="card p-4 border-l-4 border-amber-400">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-amber-700">Belum Masuk Shift / Read Only</p>
+              <p className="font-semibold text-amber-700">Read Only</p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Anda tetap bisa lihat data kasir, tapi aksi transaksi dikunci sampai masuk shift.
+                {!branchId
+                  ? 'Anda melihat data semua cabang. Masuk shift dan pilih cabang untuk bertransaksi.'
+                  : 'Belum masuk shift. Aksi transaksi dikunci sampai masuk shift.'
+                }
               </p>
             </div>
             <Button variant="warning" onClick={goToShiftPage}>Masuk Shift</Button>
@@ -779,6 +784,7 @@ function PendingView({
     unit_price: number
     subtotal: number
     code: string
+    branch_id: string
   }[]
   onRefetch: () => void
   branchId: string
@@ -816,11 +822,14 @@ function PendingView({
       return
     }
 
+    // Use the item's own branch_id for the transaction (works across all branches)
+    const effectiveBranchId = branchId || selectedItemsList[0].branch_id
+
     try {
       // Create a NEW transaction for the current staff processing the payment
       // This ensures the omset goes to the current staff (userId)
       await createTransaction({
-        branchId,
+        branchId: effectiveBranchId,
         userId,
         items: selectedItemsList.map((i) => ({
           product_id: i.product_id,
@@ -842,7 +851,9 @@ function PendingView({
       })
 
       for (const [trxId, itemIds] of itemsByTrx.entries()) {
-        await cancelTransactionItems(trxId, itemIds, branchId, userId)
+        // Use each item's own branch_id for stock restoration
+        const itemBranchId = selectedItemsList.find(i => i.transaction_id === trxId)?.branch_id ?? effectiveBranchId
+        await cancelTransactionItems(trxId, itemIds, itemBranchId, userId)
       }
 
       toast.success('Pembayaran pending berhasil!')
@@ -868,6 +879,9 @@ function PendingView({
       return
     }
 
+    // Use the item's own branch_id for the transaction (works across all branches)
+    const effectiveBranchId = branchId || selectedItemsList[0].branch_id
+
     const customerName = prompt('Nama pelanggan:')
     if (!customerName || !customerName.trim()) {
       toast.error('Nama pelanggan wajib diisi')
@@ -879,7 +893,7 @@ function PendingView({
     try {
       // Create a NEW transaction for the current staff processing the debt
       const trx = await createTransaction({
-        branchId,
+        branchId: effectiveBranchId,
         userId,
         items: selectedItemsList.map((i) => ({
           product_id: i.product_id,
@@ -893,7 +907,7 @@ function PendingView({
 
       await createDebt({
         transaction_id: trx.id,
-        branch_id: branchId,
+        branch_id: effectiveBranchId,
         customer_name: customerName,
         customer_phone: customerPhone,
         total_amount: totalSelected,
@@ -908,7 +922,9 @@ function PendingView({
       })
 
       for (const [trxId, itemIds] of itemsByTrx.entries()) {
-        await cancelTransactionItems(trxId, itemIds, branchId, userId)
+        // Use each item's own branch_id for stock restoration
+        const itemBranchId = selectedItemsList.find(i => i.transaction_id === trxId)?.branch_id ?? effectiveBranchId
+        await cancelTransactionItems(trxId, itemIds, itemBranchId, userId)
       }
 
       toast.success('Hutang dari pending berhasil dicatat!')
@@ -970,6 +986,12 @@ function PendingView({
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {item.code} • x{item.quantity}
+                {!branchId && (
+                  <>
+                    {' • '}
+                    <span className="text-blue-500">{item.branch_id}</span>
+                  </>
+                )}
               </p>
             </div>
             <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--accent-primary)' }}>
