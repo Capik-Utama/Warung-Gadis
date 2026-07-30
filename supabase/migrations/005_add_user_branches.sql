@@ -23,3 +23,7 @@ SELECT u.id, b.id
 FROM users u, branches b
 WHERE u.is_active = true
 ON CONFLICT (user_id, branch_id) DO NOTHING;
+
+-- ─── RLS Policies ───────────────────────────────────────────
+ALTER TABLE user_branches ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON user_branches FOR ALL USING (true);
