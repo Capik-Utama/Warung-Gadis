@@ -22,7 +22,10 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={inputId} className="label">
+        <label
+          htmlFor={inputId}
+          style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}
+        >
           {label}
         </label>
       )}
@@ -75,7 +78,10 @@ export const Select: React.FC<SelectProps> = ({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={selectId} className="label">
+        <label
+          htmlFor={selectId}
+          style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}
+        >
           {label}
         </label>
       )}
@@ -113,7 +119,10 @@ export const Textarea: React.FC<TextareaProps> = ({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={textareaId} className="label">
+        <label
+          htmlFor={textareaId}
+          style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}
+        >
           {label}
         </label>
       )}
