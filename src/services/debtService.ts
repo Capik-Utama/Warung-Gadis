@@ -120,3 +120,49 @@ export async function fetchDebtMembers(): Promise<string[]> {
   const uniqueNames = Array.from(new Set((data as { customer_name: string }[]).map(d => d.customer_name)))
   return uniqueNames
 }
+
+// Bayar sejumlah nominal untuk satu member (nama), dialokasikan FIFO:
+// transaksi paling lama dilunasi lebih dulu.
+export async function payMemberAmount(params: {
+  customerName: string
+  amount: number
+  userId: string
+  branchId: string
+  notes?: string
+}): Promise<{ paidAmount: number; settledCount: number; remaining: number }> {
+  const { customerName, amount, userId, branchId, notes } = params
+  if (amount <= 0) throw new Error('Nominal pembayaran tidak valid')
+
+  await ensureStaffWriteAccess()
+
+  const { data, error } = await supabase
+    .from('debts')
+    .select('id, remaining_amount, branch_id')
+    .eq('customer_name', customerName)
+    .neq('status', 'paid')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+
+  const open = (data ?? []) as { id: string; remaining_amount: number; branch_id: string }[]
+  const totalRemaining = open.reduce((s, d) => s + d.remaining_amount, 0)
+  if (totalRemaining <= 0) throw new Error('Member ini sudah tidak punya sisa')
+  if (amount > totalRemaining) throw new Error('Nominal melebihi sisa member')
+
+  let left = amount
+  let settledCount = 0
+
+  for (const debt of open) {
+    if (left <= 0) break
+    const alloc = Math.min(left, debt.remaining_amount)
+    if (alloc <= 0) continue
+    await payDebt(debt.id, alloc, userId, branchId || debt.branch_id, notes)
+    if (alloc >= debt.remaining_amount) settledCount += 1
+    left -= alloc
+  }
+
+  return {
+    paidAmount: amount - left,
+    settledCount,
+    remaining: totalRemaining - (amount - left),
+  }
+}

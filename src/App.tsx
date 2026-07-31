@@ -15,7 +15,7 @@ import ProdukPage from '@/pages/produk/ProdukPage'
 import KategoriPage from '@/pages/kategori/KategoriPage'
 import StokPage from '@/pages/stok/StokPage'
 import TransaksiPage from '@/pages/transaksi/TransaksiPage'
-import HutangPage from '@/pages/hutang/HutangPage'
+import MemberPage from '@/pages/member/MemberPage'
 import LaporanPage from '@/pages/laporan/LaporanPage'
 import UserPage from '@/pages/user/UserPage'
 import CabangPage from '@/pages/cabang/CabangPage'
@@ -52,7 +52,8 @@ function App() {
             <Route path="kategori" element={<KategoriPage />} />
             <Route path="stok" element={<StokPage />} />
             <Route path="transaksi" element={<TransaksiPage />} />
-            <Route path="hutang" element={<HutangPage />} />
+            <Route path="member" element={<MemberPage />} />
+            <Route path="hutang" element={<Navigate to="/member" replace />} />
             <Route path="laporan" element={<LaporanPage />} />
             <Route path="user" element={<UserPage />} />
             <Route path="cabang" element={<CabangPage />} />

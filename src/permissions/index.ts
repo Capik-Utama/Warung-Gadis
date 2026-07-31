@@ -109,7 +109,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
 
 export const ALL_PERMISSIONS: Array<{ key: PermissionKey; label: string }> = [
   { key: 'access_kasir', label: 'Akses Kasir' },
-  { key: 'access_hutang', label: 'Akses Hutang' },
+  { key: 'access_hutang', label: 'Akses Member' },
   { key: 'add_product', label: 'Tambah Produk' },
   { key: 'edit_product', label: 'Edit Produk' },
   { key: 'delete_product', label: 'Hapus Produk' },

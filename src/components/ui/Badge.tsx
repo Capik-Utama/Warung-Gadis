@@ -13,7 +13,7 @@ export function statusBadge(status: string) {
   const map: Record<string, { label: string; variant: 'green' | 'yellow' | 'red' | 'blue' | 'gray' }> = {
     paid: { label: 'Lunas', variant: 'green' },
     pending: { label: 'Pending', variant: 'yellow' },
-    debt: { label: 'Hutang', variant: 'red' },
+    debt: { label: 'Member', variant: 'red' },
     cancelled: { label: 'Batal', variant: 'gray' },
     active: { label: 'Aktif', variant: 'green' },
     inactive: { label: 'Nonaktif', variant: 'gray' },

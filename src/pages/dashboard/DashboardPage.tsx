@@ -126,7 +126,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Box 4: Hutang */}
-        <Link to="/hutang" className="stat-card cursor-pointer transition-all hover:shadow-md">
+        <Link to="/member" className="stat-card cursor-pointer transition-all hover:shadow-md">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-amber-50">
               <AlertTriangle size={20} className="text-amber-500" />
@@ -137,7 +137,7 @@ function OwnerDashboard() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
               {formatCurrency(totalDebt)}
             </p>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Hutang</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Member</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Klik untuk kelola</p>
           </div>
         </Link>
@@ -426,7 +426,7 @@ function StaffDashboard() {
         </div>
 
         {/* Box 4: Hutang */}
-        <Link to="/hutang" className="stat-card cursor-pointer transition-all hover:shadow-md">
+        <Link to="/member" className="stat-card cursor-pointer transition-all hover:shadow-md">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-amber-50">
               <AlertTriangle size={20} className="text-amber-500" />
@@ -437,7 +437,7 @@ function StaffDashboard() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
               {formatCurrency(totalDebt)}
             </p>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Hutang</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Member</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Klik untuk kelola</p>
           </div>
         </Link>

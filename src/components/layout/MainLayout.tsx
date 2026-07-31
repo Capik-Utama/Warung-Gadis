@@ -10,7 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/kategori': 'Kategori',
   '/stok': 'Manajemen Stok',
   '/transaksi': 'Transaksi',
-  '/hutang': 'Hutang Pelanggan',
+  '/member': 'Member',
   '/laporan': 'Laporan',
   '/favorit': 'Favorit',
   '/shift': 'Shift',

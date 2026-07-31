@@ -251,7 +251,7 @@ export default function KasirPage() {
       if (isReadOnly) throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
       if (!user || !branchId) throw new Error('Session tidak valid')
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
-      if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai hutang')
+      if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai member')
 
       const items = checkedItems.map((i) => ({
         product_id: i.product.id,
@@ -280,7 +280,7 @@ export default function KasirPage() {
       })
     },
     onSuccess: () => {
-      toast.success('Hutang berhasil dicatat!')
+      toast.success('Member berhasil dicatat!')
       cart.clearCart()
       setDebtModal(false)
       setDebtName('')
@@ -535,7 +535,7 @@ export default function KasirPage() {
               onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
               disabled={isReadOnly || checkedCount === 0}
             >
-              HUTANG
+              MEMBER
             </Button>
             <Button
               variant="primary"
@@ -639,7 +639,7 @@ export default function KasirPage() {
       <Modal
         isOpen={debtModal}
         onClose={() => setDebtModal(false)}
-        title="Catat Hutang"
+        title="Catat Member"
         footer={
           <>
             <Button variant="secondary" onClick={() => setDebtModal(false)}>Batal</Button>
@@ -649,7 +649,7 @@ export default function KasirPage() {
               onClick={() => debtMutation.mutate()}
               disabled={!debtName.trim()}
             >
-              Jadikan Hutang
+              Jadikan Member
             </Button>
           </>
         }
@@ -657,7 +657,7 @@ export default function KasirPage() {
         <div className="space-y-4">
           <div className="p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Item hutang ({checkedCount}):
+              Item member ({checkedCount}):
             </p>
             {checkedItems.map((item) => (
               <div key={item.product.id} className="flex justify-between text-sm py-0.5">
@@ -670,7 +670,7 @@ export default function KasirPage() {
               </div>
             ))}
             <div className="flex justify-between mt-2 pt-2 font-bold text-base" style={{ borderTop: '1px solid var(--border-color)' }}>
-              <span style={{ color: 'var(--text-primary)' }}>Total Hutang</span>
+              <span style={{ color: 'var(--text-primary)' }}>Total Member</span>
               <span className="text-red-500">{formatCurrency(checkedTotal)}</span>
             </div>
           </div>
@@ -723,7 +723,7 @@ export default function KasirPage() {
             </p>
           )}
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Hutang bisa dilihat dan dibayar oleh semua staf di semua cabang.
+            Member bisa dilihat dan dibayar oleh semua staf di semua cabang.
           </p>
         </div>
       </Modal>
@@ -884,7 +884,7 @@ function PendingView({
       return
     }
     if (selectedItemsList.length === 0) {
-      toast.error('Pilih item yang ingin dijadikan hutang')
+      toast.error('Pilih item yang ingin dijadikan member')
       return
     }
     if (!userId) {
@@ -940,12 +940,12 @@ function PendingView({
         await cancelTransactionItems(trxId, itemIds, itemBranchId, userId)
       }
 
-      toast.success('Hutang dari pending berhasil dicatat!')
+      toast.success('Member dari pending berhasil dicatat!')
       setSelectedItems(new Set())
       onRefresh()
       qc.invalidateQueries({ queryKey: ['debts'] })
     } catch (e: any) {
-      toast.error(e.message || 'Gagal mencatat hutang')
+      toast.error(e.message || 'Gagal mencatat member')
     }
   }
 
@@ -1041,7 +1041,7 @@ function PendingView({
               className="text-xs py-2"
               onClick={handleDebtPending}
             >
-              HUTANG
+              MEMBER
             </Button>
             <Button
               variant="secondary"
