@@ -3,16 +3,17 @@ import React from 'react'
 interface LogoProps {
   size?: number
   className?: string
+  style?: React.CSSProperties
 }
 
-export const WGLogo: React.FC<LogoProps> = ({ size = 48, className = '' }) => (
+export const WGLogo: React.FC<LogoProps> = ({ size = 48, className = '', style }) => (
   <img
     src="/logo-warung-gadis.png"
     alt="Warung Gadis"
     width={size}
     height={size}
     className={className}
-    style={{ borderRadius: '50%', objectFit: 'cover' }}
+    style={{ borderRadius: '50%', objectFit: 'cover', ...style }}
   />
 )
 
