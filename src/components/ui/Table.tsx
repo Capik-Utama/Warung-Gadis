@@ -1,59 +1,71 @@
-import React from 'react'
+import React from 'react';
 
 interface Column<T> {
-  key: string
-  header: string
-  render?: (value: unknown, row: T) => React.ReactNode
-  className?: string
+  header: string;
+  accessor: keyof T | ((item: T) => React.ReactNode);
+  className?: string;
 }
 
 interface TableProps<T> {
-  columns: Column<T>[]
-  data: T[]
-  loading?: boolean
-  emptyMessage?: string
-  rowKey: (row: T) => string
+  data: T[];
+  columns: Column<T>[];
+  keyExtractor: (item: T) => string | number;
+  emptyMessage?: string;
 }
 
-export function Table<T>({ columns, data, loading, emptyMessage = 'Tidak ada data', rowKey }: TableProps<T>) {
+export function Table<T>({
+  data,
+  columns,
+  keyExtractor,
+  emptyMessage = 'Tidak ada data',
+}: TableProps<T>) {
   return (
-    <div className="table-container">
-      <table className="table">
-        <thead>
+    <div className="overflow-x-auto rounded-lg border border-gray-800 bg-gray-900/50">
+      <table className="w-full text-left text-sm text-gray-200">
+        <thead className="border-b border-gray-800 bg-gray-900 text-xs uppercase tracking-wider text-gray-400">
           <tr>
-            {columns.map((col) => (
-              <th key={col.key} className={col.className}>{col.header}</th>
+            {columns.map((col, index) => (
+              <th
+                key={index}
+                scope="col"
+                className={`px-4 py-3 font-medium ${col.className || ''}`}
+              >
+                {col.header}
+              </th>
             ))}
           </tr>
         </thead>
-        <tbody>
-          {loading ? (
-            <tr>
-              <td colSpan={columns.length} className="text-center py-10">
-                <span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} />
-              </td>
-            </tr>
-          ) : data.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>
-                {emptyMessage}
-              </td>
-            </tr>
-          ) : (
-            data.map((row) => (
-              <tr key={rowKey(row)}>
-                {columns.map((col) => (
-                  <td key={col.key} className={col.className}>
-                    {col.render
-                      ? col.render((row as Record<string, unknown>)[col.key], row)
-                      : String((row as Record<string, unknown>)[col.key] ?? '')}
+        <tbody className="divide-y divide-gray-800">
+          {data.length > 0 ? (
+            data.map((item) => (
+              <tr
+                key={keyExtractor(item)}
+                className="hover:bg-gray-800/50 transition-colors"
+              >
+                {columns.map((col, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className={`px-4 py-3 text-gray-200 ${col.className || ''}`}
+                  >
+                    {typeof col.accessor === 'function'
+                      ? col.accessor(item)
+                      : (item[col.accessor] as React.ReactNode)}
                   </td>
                 ))}
               </tr>
             ))
+          ) : (
+            <tr>
+              <td
+                colSpan={columns.length}
+                className="px-4 py-8 text-center text-gray-400"
+              >
+                {emptyMessage}
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
     </div>
-  )
+  );
 }
