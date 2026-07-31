@@ -28,6 +28,7 @@ a {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
+  --bg-card-muted: #eef2f7;
   --bg-sidebar: #1e40af;
   --bg-topbar: #ffffff;
   --text-primary: #0f172a;
@@ -74,6 +75,18 @@ body {
     background: var(--bg-card, #ffffff);
     border: 1px solid var(--border-color, #e2e8f0);
     box-shadow: 0 1px 6px var(--shadow-color, rgba(0,0,0,0.08));
+  }
+
+  /* Card khusus dashboard: background abu agar tidak polos */
+  .stat-card {
+    @apply rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200;
+    background: var(--bg-card-muted, #eef2f7);
+    border: 1px solid var(--border-color, #e2e8f0);
+    box-shadow: 0 1px 6px var(--shadow-color, rgba(0,0,0,0.08));
+  }
+
+  .dashboard-card {
+    background: var(--bg-card-muted, #eef2f7);
   }
 
   .btn {

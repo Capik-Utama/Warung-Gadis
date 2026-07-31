@@ -144,7 +144,7 @@ function OwnerDashboard() {
       </div>
 
       {/* Chart */}
-      <div className="card p-5">
+      <div className="card dashboard-card p-5">
         <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           Grafik Pendapatan (14 Hari)
         </h3>
@@ -181,7 +181,7 @@ function OwnerDashboard() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Top Products */}
-        <div className="card p-5">
+        <div className="card dashboard-card p-5">
           <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Produk Terlaris
           </h3>
@@ -217,7 +217,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="card p-5">
+        <div className="card dashboard-card p-5">
           <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Transaksi Terbaru
           </h3>
@@ -259,7 +259,7 @@ function OwnerDashboard() {
 
       {/* Low Stock Alert */}
       {lowStock.length > 0 && (
-        <div className="card p-5 border-l-4 border-red-500">
+        <div className="card dashboard-card p-5 border-l-4 border-red-500">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={18} className="text-red-500" />
             <h3 className="font-semibold text-red-500">Stok Menipis</h3>
@@ -463,7 +463,7 @@ function StaffDashboard() {
       </div>
 
       {/* Shift info */}
-      <div className="card p-5 flex items-center gap-4">
+      <div className="card dashboard-card p-5 flex items-center gap-4">
         <div className={`p-3 rounded-xl ${activeShift ? 'bg-green-50' : 'bg-gray-100'}`}>
           <Clock size={24} className={activeShift ? 'text-green-600' : 'text-gray-400'} />
         </div>
