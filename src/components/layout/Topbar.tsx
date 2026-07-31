@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Bell, Home, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -21,7 +21,7 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const navigate = useNavigate()
-  const { user, selectedBranch, logout, setSelectedBranch } = useAuthStore()
+  const { user, selectedBranch, allowedBranchIds, logout, setSelectedBranch } = useAuthStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [showOpenModal, setShowOpenModal] = useState(false)
@@ -140,13 +140,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     }
   }
 
-  // Filter branches for staff: only show allowed branches
-  const allowedBranches = branches.filter(b => {
-    if (!user) return false
-    if (user.role === 'developer' || user.role === 'manager') return true
-    const { allowedBranchIds } = useAuthStore.getState()
-    return allowedBranchIds.includes(b.id)
-  })
+  // Filter branches for staff: only show allowed branches (reactive to auth store)
+  const allowedBranches = useMemo(() => {
+    if (!user) return []
+    if (user.role === 'developer' || user.role === 'manager') return branches
+    return branches.filter(b => allowedBranchIds.includes(b.id))
+  }, [branches, user, allowedBranchIds])
   const branchOptions = allowedBranches.map(b => ({ value: b.id, label: b.name }))
 
   return (
