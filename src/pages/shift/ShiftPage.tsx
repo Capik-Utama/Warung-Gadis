@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, LogIn, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,7 +12,7 @@ import { useAuthStore } from '@/store/authStore'
 import type { Shift, Branch } from '@/types'
 
 export default function ShiftPage() {
-  const { user, selectedBranch, setSelectedBranch } = useAuthStore()
+  const { user, selectedBranch, allowedBranchIds, setSelectedBranch } = useAuthStore()
   const qc = useQueryClient()
   const branchId = selectedBranch?.id ?? ''
   const [checkInBranchId, setCheckInBranchId] = useState(branchId)
@@ -41,8 +41,12 @@ export default function ShiftPage() {
 
   const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
 
-  // Filter branches for staff: only show allowed branches
-  const filteredBranches: Branch[] = branches.filter(b => useAuthStore.getState().isBranchAllowed(b.id))
+  // Filter branches for staff: only show allowed branches (reactive to auth store)
+  const filteredBranches: Branch[] = useMemo(() => {
+    if (!user) return []
+    if (user.role === 'developer' || user.role === 'manager') return branches
+    return branches.filter(b => allowedBranchIds.includes(b.id))
+  }, [branches, user, allowedBranchIds])
 
   useEffect(() => {
     if (branchId && !checkInBranchId) {
