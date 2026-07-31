@@ -229,77 +229,65 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
   return Array.from(grouped.values()).sort((a, b) => b.total - a.total)
 }
 
-export async function getLowStockProducts(branchId: string) {
-  let query = supabase
-    .from('products')
-    .select('id, name, stock, min_stock, unit')
+type LowStockRow = { id: string; name: string; stock: number; min_stock: number; unit: string }
+
+async function lowStockForBranch(branchId: string): Promise<LowStockRow[]> {
+  if (!branchId) return []
+
+  const { data: stocks } = await supabase
+    .from('product_stocks')
+    .select('product_id, stock, min_stock, product:products(id, name, unit, is_active)')
+    .eq('branch_id', branchId)
     .order('stock')
-    .limit(100)
+    .limit(200)
 
-  if (branchId) {
-    query = query.eq('branch_id', branchId)
-  }
+  return ((stocks ?? []) as any[])
+    .map((s) => {
+      const prod = Array.isArray(s.product) ? s.product[0] : s.product
+      return {
+        id: s.product_id,
+        name: prod?.name ?? '-',
+        unit: prod?.unit ?? 'pcs',
+        stock: s.stock as number,
+        min_stock: s.min_stock as number,
+        is_active: prod?.is_active ?? true,
+      }
+    })
+    .filter((p) => p.is_active && p.stock <= p.min_stock)
+    .map(({ is_active: _ia, ...rest }) => rest)
+}
 
-  const { data } = await query
-
-  return (data ?? []).filter(
-    (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
-  )
+export async function getLowStockProducts(branchId: string) {
+  return lowStockForBranch(branchId)
 }
 
 // Ambil stok menipis per cabang (untuk manager)
 export async function getLowStockAllBranches(): Promise<{
   branch_id: string
   branch_name: string
-  products: { id: string; name: string; stock: number; min_stock: number; unit: string }[]
+  products: LowStockRow[]
 }[]> {
-  const { data: branches } = await supabase.from('branches').select('id, name').eq('is_active', true).order('name')
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('name')
 
-  const { data: allProducts } = await supabase
-    .from('products')
-    .select('id, name, stock, min_stock, unit, branch_id, branch:branches(name)')
-    .order('stock')
-    .limit(200)
+  const results: { branch_id: string; branch_name: string; products: LowStockRow[] }[] = []
 
-  const results: { branch_id: string; branch_name: string; products: { id: string; name: string; stock: number; min_stock: number; unit: string }[] }[] = []
-
-  // Group by branch
-  const branchMap = new Map<string, { branch_name: string; products: { id: string; name: string; stock: number; min_stock: number; unit: string }[] }>()
-
-  ;(allProducts ?? []).forEach((p: any) => {
-    const bid = p.branch_id
-    const bname = Array.isArray(p.branch) ? p.branch[0]?.name : p.branch?.name ?? 'Unknown'
-    if (p.stock <= p.min_stock) {
-      const entry = branchMap.get(bid) ?? { branch_name: bname, products: [] as { id: string; name: string; stock: number; min_stock: number; unit: string }[] }
-      entry.products.push({ id: p.id, name: p.name, stock: p.stock, min_stock: p.min_stock, unit: p.unit })
-      branchMap.set(bid, entry)
+  for (const b of (branches ?? []) as { id: string; name: string }[]) {
+    const products = await lowStockForBranch(b.id)
+    if (products.length > 0) {
+      results.push({ branch_id: b.id, branch_name: b.name, products })
     }
-  })
+  }
 
-  branchMap.forEach((val, key) => {
-    results.push({ branch_id: key, branch_name: val.branch_name, products: val.products })
-  })
-
-  results.sort((a, b) => a.branch_name.localeCompare(b.branch_name))
   return results
 }
 
 // Ambil stok menipis untuk cabang tertentu
 export async function getLowStockByBranch(branchId: string) {
-  let query = supabase
-    .from('products')
-    .select('id, name, stock, min_stock, unit')
-    .order('stock')
-
-  if (branchId) {
-    query = query.eq('branch_id', branchId)
-  }
-
-  const { data } = await query
-
-  return (data ?? []).filter(
-    (p: { stock: number; min_stock: number }) => p.stock <= p.min_stock,
-  )
+  return lowStockForBranch(branchId)
 }
 
 // Ambil statistik hari ini untuk staf tertentu di cabang tertentu

@@ -77,6 +77,22 @@ export interface Product {
   updated_at: string
 }
 
+export interface ProductStock {
+  id: string
+  product_id: string
+  branch_id: string
+  stock: number
+  min_stock: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductWithBranchStocks extends Product {
+  stocks_by_branch: Record<string, number>
+  min_stock_by_branch: Record<string, number>
+  total_stock: number
+}
+
 export interface ProductPrice {
   id: string
   product_id: string
