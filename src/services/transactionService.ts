@@ -48,74 +48,30 @@ export async function createTransaction(payload: {
 }): Promise<Transaction> {
   await ensureStaffWriteAccess()
 
-  const totalAmount = payload.items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
-  const paidAmount = payload.paidAmount ?? 0
+  // Semua penulisan (transaksi + item + stock_logs) dilakukan dalam satu RPC
+  // agar atomik. Pengurangan stok TIDAK dilakukan di sini: trigger
+  // trg_stock_on_sale sudah mengurangi products.stock saat stock_logs
+  // bertipe 'sale' disisipkan. Update manual di client dulu menyebabkan
+  // stok berkurang dua kali lipat.
+  const { data, error } = await supabase.rpc('create_transaction', {
+    p_branch_id: payload.branchId,
+    p_user_id: payload.userId,
+    p_items: payload.items.map((i) => ({
+      product_id: i.product_id,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+    })),
+    p_status: payload.status,
+    p_code: generateCode('TRX'),
+    p_customer_name: payload.customerName ?? null,
+    p_customer_phone: payload.customerPhone ?? null,
+    p_payment_method: payload.paymentMethod ?? null,
+    p_paid_amount: payload.paidAmount ?? 0,
+    p_notes: payload.notes ?? null,
+  })
 
-  const { data: trx, error: trxError } = await supabase
-    .from('transactions')
-    .insert({
-      code: generateCode('TRX'),
-      branch_id: payload.branchId,
-      user_id: payload.userId,
-      customer_name: payload.customerName ?? null,
-      customer_phone: payload.customerPhone ?? null,
-      status: payload.status,
-      payment_method: payload.paymentMethod ?? null,
-      total_amount: totalAmount,
-      paid_amount: paidAmount,
-      change_amount: Math.max(0, paidAmount - totalAmount),
-      notes: payload.notes ?? null,
-    })
-    .select()
-    .single()
-
-  if (trxError) throw trxError
-
-  const transactionId = (trx as Transaction).id
-
-  const itemRows = payload.items.map((i) => ({
-    transaction_id: transactionId,
-    product_id: i.product_id,
-    quantity: i.quantity,
-    unit_price: i.unit_price,
-    subtotal: i.quantity * i.unit_price,
-    status: payload.status,
-  }))
-
-  const { error: itemsError } = await supabase.from('transaction_items').insert(itemRows)
-  if (itemsError) throw itemsError
-
-  // PENGURANGAN STOK OTOMATIS untuk semua status (pending, paid, debt)
-  for (const item of payload.items) {
-    // 1. Ambil stok saat ini
-    const { data: product } = await supabase
-      .from('products')
-      .select('stock')
-      .eq('id', item.product_id)
-      .single()
-
-    if (product) {
-      const newStock = product.stock - item.quantity
-      
-      // 2. Update stok di tabel products (bisa negatif jika stock terbatas)
-      await supabase
-        .from('products')
-        .update({ stock: Math.max(0, newStock) })
-        .eq('id', item.product_id)
-
-      // 3. Catat ke stock_logs
-      await supabase.from('stock_logs').insert({
-        product_id: item.product_id,
-        branch_id: payload.branchId,
-        type: 'sale',
-        quantity: item.quantity,
-        notes: `Penjualan ${payload.status === 'debt' ? '(Hutang)' : payload.status === 'pending' ? '(Pending)' : ''} - ${trx.code}`,
-        user_id: payload.userId
-      })
-    }
-  }
-
-  return trx as Transaction
+  if (error) throw error
+  return data as Transaction
 }
 
 export async function payTransactionItems(
