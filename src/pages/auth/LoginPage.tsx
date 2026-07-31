@@ -30,7 +30,6 @@ export default function LoginPage() {
       setUser(user)
       setPermissions(permissions as any)
       setSelectedBranch(null)
-      // Load allowed branch IDs for staff (developer/manager get all branches)
       if (user.role === 'staff') {
         try {
           const userBranches = await fetchUserBranches(user.id)
@@ -58,10 +57,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <WGLogo size={80} />
+          <div className="flex justify-center mb-5">
+            <WGLogo size={140} className="shadow-2xl" style={{ filter: 'drop-shadow(0 8px 24px rgba(99,102,241,0.4))' }} />
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Warung Gadis
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
