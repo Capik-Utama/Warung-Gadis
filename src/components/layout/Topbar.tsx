@@ -169,14 +169,19 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
               <button
                 type="button"
                 onClick={() => navigate('/shift')}
-                className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700"
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{ 
+                    borderColor: 'var(--warning)', 
+                    background: 'rgba(245,158,11,0.15)', 
+                    color: 'var(--warning)'
+                  }}
               >
                 (Read Only)
               </button>
             )}
           </h1>
           {selectedBranch && (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
               {selectedBranch.name}
             </p>
           )}
@@ -229,8 +234,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
                 <div className="p-3 space-y-2">
                   <button
                     onClick={() => { navigate('/shift'); setShowMenu(false); }}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors hover:bg-green-50 text-green-600 border border-green-100"
-                    style={{ background: 'rgba(34,197,94,0.05)' }}
+                    className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
+                    style={{ 
+                      background: 'rgba(34,197,94,0.05)', 
+                      color: 'var(--success)',
+                      borderColor: 'rgba(34,197,94,0.2)'
+                    }}
                   >
                     <LogIn size={24} />
                     <div className="text-left">
@@ -241,8 +250,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
 
                   <button
                     onClick={() => { navigate('/shift'); setShowMenu(false); }}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors hover:bg-amber-50 text-amber-600 border border-amber-100"
-                    style={{ background: 'rgba(245,158,11,0.05)' }}
+                    className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
+                    style={{ 
+                      background: 'rgba(245,158,11,0.05)', 
+                      color: 'var(--warning)',
+                      borderColor: 'rgba(245,158,11,0.2)'
+                    }}
                   >
                     <LogOut size={24} />
                     <div className="text-left">
@@ -255,7 +268,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
 
                   <button
                     onClick={() => { navigate('/theme'); setShowMenu(false); }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-gray-100"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <Palette size={18} className="opacity-70" />
@@ -266,14 +279,16 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
                     <>
                       <button
                         onClick={() => handleOpenCloseModal('open')}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-green-50 text-green-600"
+                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors"
+                        style={{ color: 'var(--success)' }}
                       >
                         <StoreOpen size={18} />
                         <span className="text-sm font-medium">Buka Warung</span>
                       </button>
                       <button
                         onClick={() => handleOpenCloseModal('close')}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-red-50 text-red-600"
+                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors"
+                        style={{ color: 'var(--danger)' }}
                       >
                         <Store size={18} />
                         <span className="text-sm font-medium">Tutup Warung</span>
@@ -283,7 +298,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
 
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-red-50 text-red-500"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors"
+                    style={{ color: 'var(--danger)' }}
                   >
                     <LogOut size={18} />
                     <span className="text-sm font-medium">Logout</span>
@@ -316,12 +332,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
         }
       >
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: 'rgba(34,197,94,0.15)', color: 'var(--success)' }}>
             <StoreOpen size={32} />
           </div>
           <div>
             <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Buka Warung</p>
-            <p className="text-sm px-4" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm px-4" style={{ color: 'var(--text-secondary)' }}>
               Pilih cabang dan mulai shift baru untuk membuka warung.
             </p>
           </div>
@@ -366,12 +382,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
         }
       >
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
             <AlertCircle size={32} />
           </div>
           <div>
             <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Anda Yakin?</p>
-            <p className="text-sm px-4" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm px-4" style={{ color: 'var(--text-secondary)' }}>
               Tindakan ini akan mengakhiri seluruh shift yang sedang aktif di cabang secara paksa.
             </p>
           </div>

@@ -289,8 +289,8 @@ export default function ProdukPage() {
                           <tr key={p.id}>
                             <td>
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                                  <Package size={16} className="text-blue-500" />
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(37,99,235,0.1)' }}>
+                                  <Package size={16} style={{ color: 'var(--accent-primary)' }} />
                                 </div>
                                 <div>
                                   <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -305,8 +305,8 @@ export default function ProdukPage() {
                             </td>
                             <td>
                               <span
-                                className={`font-semibold ${stock <= min ? 'text-red-500' : ''}`}
-                                style={{ color: stock <= min ? undefined : 'var(--text-primary)' }}
+                                className={`font-semibold ${stock <= min ? '' : ''}`}
+                                style={{ color: stock <= min ? 'var(--danger)' : 'var(--text-primary)' }}
                               >
                                 {stock} {p.unit}
                               </span>
@@ -325,7 +325,7 @@ export default function ProdukPage() {
                                       })
                                     }
                                     title={`Ubah stok di ${slide.label}`}
-                                    className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600"
+                                    className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--success)' }}
                                   >
                                     <Boxes size={15} />
                                   </button>
@@ -333,7 +333,7 @@ export default function ProdukPage() {
                                 {canEdit && (
                                   <button
                                     onClick={() => openEdit(p)}
-                                    className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500"
+                                    className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--accent-primary)' }}
                                   >
                                     <Pencil size={15} />
                                   </button>
@@ -341,7 +341,7 @@ export default function ProdukPage() {
                                 {canDelete && (
                                   <button
                                     onClick={() => setDeleteConfirm(p)}
-                                    className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"
+                                    className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--danger)' }}
                                   >
                                     <Trash2 size={15} />
                                   </button>
@@ -392,7 +392,7 @@ export default function ProdukPage() {
               setStockEdit((s) => (s ? { ...s, value: parseInt(e.target.value) || 0 } : s))
             }
           />
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             Selisihnya otomatis dicatat sebagai penyesuaian di riwayat stok.
           </p>
         </div>

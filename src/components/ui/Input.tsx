@@ -24,7 +24,7 @@ export const Input: React.FC<InputProps> = ({
       {label && (
         <label
           htmlFor={inputId}
-          style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}
+          style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}
         >
           {label}
         </label>
@@ -80,7 +80,7 @@ export const Select: React.FC<SelectProps> = ({
       {label && (
         <label
           htmlFor={selectId}
-          style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}
+          style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}
         >
           {label}
         </label>
@@ -121,7 +121,7 @@ export const Textarea: React.FC<TextareaProps> = ({
       {label && (
         <label
           htmlFor={textareaId}
-          style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}
+          style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}
         >
           {label}
         </label>

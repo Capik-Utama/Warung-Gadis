@@ -474,17 +474,17 @@ function StaffDashboard() {
               activeShift ? 'bg-green-100' : 'bg-red-100'
             }`} style={{ 
               color: activeShift ? '#16a34a' : '#dc2626',
-              textShadow: activeShift ? '0 0 8px #22c55e' : '0 0 8px #ef4444'
+              textShadow: activeShift ? '0 0 12px #22c55e, 0 1px 2px rgba(0,0,0,0.5)' : '0 0 12px #ef4444, 0 1px 2px rgba(0,0,0,0.5)'
             }}>
               {activeShift ? 'Sedang Mbakul' : 'Sedang Tedung'}
             </span>
           </p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {activeShift
               ? `Check-in: ${new Date(activeShift.check_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
               : 'Anda belum masuk shift hari ini'}
             {' '}
-            <Link to="/shift" className="text-blue-500 hover:underline">Kelola shift Anda</Link>
+            <Link to="/shift" style={{ color: 'var(--accent-primary)' }} className="hover:underline">Kelola shift Anda</Link>
           </p>
         </div>
       </div>
@@ -498,7 +498,7 @@ function StaffDashboard() {
       >
         <div className="max-h-[60vh] overflow-y-auto space-y-2">
           {lowStock.length === 0 ? (
-            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>
               <Package size={40} className="mx-auto mb-3 opacity-30" />
               <p className="text-sm">Semua stok aman</p>
               <p className="text-xs mt-1 opacity-60">Tidak ada produk dengan stok menipis</p>
@@ -518,12 +518,12 @@ function StaffDashboard() {
                     <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                       {p.name}
                     </p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                       Min: {p.min_stock} {p.unit}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-bold ${p.stock <= 0 ? 'text-red-600' : 'text-amber-600'}`}>
+                    <p className={`text-sm font-bold ${p.stock <= 0 ? 'text-red-500' : 'text-amber-500'}`}>
                       {p.stock} {p.unit}
                     </p>
                     {p.stock <= 0 && (
