@@ -1,8 +1,10 @@
 import { supabase } from '@/config/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { isBranchOperational } from '@/services/branchService'
 import type { PermissionKey } from '@/types'
 
 export const STAFF_SHIFT_REQUIRED_MESSAGE = 'Masuk shift dulu untuk melakukan transaksi.'
+export const BRANCH_CLOSED_MESSAGE = 'Cabang sedang tutup. Transaksi tidak diizinkan.'
 
 export async function ensurePermission(key: PermissionKey): Promise<void> {
   const { hasPermission } = useAuthStore.getState()
@@ -49,5 +51,11 @@ export async function ensureStaffWriteAccess(permissionKey?: PermissionKey): Pro
 
   if (!activeShift || activeShift.branch_id !== selectedBranch.id) {
     throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+  }
+
+  // Check if branch is operational
+  const isOperational = await isBranchOperational(selectedBranch.id)
+  if (!isOperational) {
+    throw new Error(BRANCH_CLOSED_MESSAGE)
   }
 }

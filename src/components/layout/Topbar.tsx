@@ -99,8 +99,13 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       toast.success('Warung Berhasil Ditutup. Semua shift telah diakhiri dan cabang ditutup.')
       setShowCloseModal(false)
       setPassword('')
-    } catch (err) {
-      toast.error('Password salah! Tutup warung dibatalkan.')
+    } catch (err: any) {
+      const msg = err?.message || ''
+      if (msg.includes('password salah')) {
+        toast.error('Password salah! Tutup warung dibatalkan.')
+      } else {
+        toast.error(`Gagal menutup warung: ${msg}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -130,7 +135,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       await setBranchOperational(branchId, true)
       
       // Buat shift baru (check-in)
-      await checkInShift(user.id, branchId)
+      // Gunakan skipOperationalCheck=true karena kita baru saja membukanya
+      await checkInShift(user.id, branchId, true)
       
       // Set cabang terpilih
       const branch = branches.find(b => b.id === branchId)
@@ -139,8 +145,13 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       toast.success('Warung Berhasil Dibuka! Cabang dibuka dan shift baru dimulai.')
       setShowOpenModal(false)
       setPassword('')
-    } catch (err) {
-      toast.error('Password salah! Buka warung dibatalkan.')
+    } catch (err: any) {
+      const msg = err?.message || ''
+      if (msg.includes('password salah')) {
+        toast.error('Password salah! Buka warung dibatalkan.')
+      } else {
+        toast.error(`Gagal membuka warung: ${msg}`)
+      }
     } finally {
       setLoading(false)
     }
