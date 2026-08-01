@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, Home, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { WGLogo } from '@/components/shared/Logo'
@@ -21,6 +21,7 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { user, selectedBranch, allowedBranchIds, logout, setSelectedBranch } = useAuthStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
@@ -39,6 +40,21 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     enabled: !!user && isStaff,
     refetchInterval: 30_000,
   })
+
+  // Sync selected branch status from database
+  const { data: freshBranches } = useQuery({
+    queryKey: ['branches'],
+    queryFn: fetchBranches,
+    enabled: !!user,
+    staleTime: 60_000,
+  })
+
+  const currentBranch = useMemo(() => {
+    if (!selectedBranch) return null
+    if (!freshBranches) return selectedBranch
+    const fresh = freshBranches.find(b => b.id === selectedBranch.id)
+    return fresh || selectedBranch
+  }, [selectedBranch, freshBranches])
 
   const isStaffReadOnly = isStaff && !activeShift
 
@@ -95,6 +111,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       
       // Tandai cabang sebagai tidak operasional (tutup)
       await setBranchOperational(branchId, false)
+      qc.invalidateQueries({ queryKey: ['branches'] })
       
       toast.success('Warung Berhasil Ditutup. Semua shift telah diakhiri dan cabang ditutup.')
       setShowCloseModal(false)
@@ -133,6 +150,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       
       // Tandai cabang sebagai operasional (buka)
       await setBranchOperational(branchId, true)
+      qc.invalidateQueries({ queryKey: ['branches'] })
       
       // Buat shift baru (check-in)
       // Gunakan skipOperationalCheck=true karena kita baru saja membukanya
@@ -160,9 +178,11 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   // Filter branches: show operational status
   const allowedBranches = useMemo(() => {
     if (!user) return []
-    if (user.role === 'developer' || user.role === 'manager') return branches
-    return branches.filter(b => allowedBranchIds.includes(b.id))
-  }, [branches, user, allowedBranchIds])
+    const source = freshBranches && freshBranches.length > 0 ? freshBranches : branches
+    if (user.role === 'developer' || user.role === 'manager') return source
+    return source.filter(b => allowedBranchIds.includes(b.id))
+  }, [branches, freshBranches, user, allowedBranchIds])
+  
   const branchOptions = allowedBranches.map(b => ({
     value: b.id,
     label: `${b.name}${b.is_operational ? '' : ' (TUTUP)'}`
@@ -206,12 +226,12 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
               </button>
             )}
           </h1>
-          {selectedBranch && (
+          {currentBranch && (
             <p className="text-xs flex items-center gap-2">
               <span style={{ color: 'var(--text-secondary)' }}>
-                {selectedBranch.name}
+                {currentBranch.name}
               </span>
-              {selectedBranch.is_operational ? (
+              {currentBranch.is_operational ? (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
                   style={{ borderColor: 'var(--success)', background: 'rgba(34,197,94,0.15)', color: 'var(--success)' }}>
                   BUKA

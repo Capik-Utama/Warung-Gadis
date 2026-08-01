@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, GitBranch, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchBranches, createBranch, updateBranch, deleteBranch, setBranchOperational } from '@/services/branchService'
+import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -35,9 +36,18 @@ export default function CabangPage() {
   const openAdd = () => { setEditing(null); setForm(def); setModal(true) }
   const openEdit = (b: Branch) => { setEditing(b); setForm({ name: b.name, address: b.address, phone: b.phone, is_active: b.is_active, is_operational: b.is_operational }); setModal(true) }
 
+  const { selectedBranch, setSelectedBranch } = useAuthStore()
+
   const toggleOperationalMutation = useMutation({
     mutationFn: ({ branchId, isOperational }: { branchId: string; isOperational: boolean }) => setBranchOperational(branchId, isOperational),
-    onSuccess: () => { toast.success('Status cabang diperbarui'); qc.invalidateQueries({ queryKey: ['branches'] }) },
+    onSuccess: (_, variables) => { 
+      toast.success('Status cabang diperbarui')
+      qc.invalidateQueries({ queryKey: ['branches'] }) 
+      // Update selectedBranch in store if it's the one being toggled
+      if (selectedBranch?.id === variables.branchId) {
+        setSelectedBranch({ ...selectedBranch, is_operational: variables.isOperational })
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   })
 
