@@ -59,10 +59,12 @@ export default function ShiftPage() {
   }, [branchId, checkInBranchId])
 
   useEffect(() => {
-    if (!selectedBranch && activeShift?.branch) {
-      setSelectedBranch(activeShift.branch)
+    if (!selectedBranch && activeShift?.branch && branches.length > 0) {
+      const fullBranch = branches.find(b => b.id === activeShift.branch.id)
+      if (fullBranch) setSelectedBranch(fullBranch)
+      else setSelectedBranch(activeShift.branch) // Fallback
     }
-  }, [selectedBranch, activeShift, setSelectedBranch])
+  }, [selectedBranch, activeShift, branches, setSelectedBranch])
 
   // Staf lain yang sedang aktif di cabang yang sama
   const otherActiveUsers = allActive.filter(s => s.user_id !== user?.id)

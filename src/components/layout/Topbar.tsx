@@ -231,15 +231,15 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
               <span style={{ color: 'var(--text-secondary)' }}>
                 {currentBranch.name}
               </span>
-              {currentBranch.is_operational ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
-                  style={{ borderColor: 'var(--success)', background: 'rgba(34,197,94,0.15)', color: 'var(--success)' }}>
-                  BUKA
-                </span>
-              ) : (
+              {currentBranch.is_operational === false ? (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
                   style={{ borderColor: 'var(--danger)', background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
                   TUTUP
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{ borderColor: 'var(--success)', background: 'rgba(34,197,94,0.15)', color: 'var(--success)' }}>
+                  BUKA
                 </span>
               )}
             </p>

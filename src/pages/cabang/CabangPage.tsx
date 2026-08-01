@@ -45,7 +45,12 @@ export default function CabangPage() {
       qc.invalidateQueries({ queryKey: ['branches'] }) 
       // Update selectedBranch in store if it's the one being toggled
       if (selectedBranch?.id === variables.branchId) {
-        setSelectedBranch({ ...selectedBranch, is_operational: variables.isOperational })
+        const updatedBranch = branches.find(b => b.id === variables.branchId)
+        if (updatedBranch) {
+          setSelectedBranch(updatedBranch)
+        } else {
+          setSelectedBranch({ ...selectedBranch, is_operational: variables.isOperational })
+        }
       }
     },
     onError: (e: Error) => toast.error(e.message),

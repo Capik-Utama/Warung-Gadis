@@ -36,7 +36,7 @@ export async function checkInShift(userId: string, branchId: string, skipOperati
 export async function getActiveShift(userId: string): Promise<Shift | null> {
   const { data } = await supabase
     .from('shifts')
-    .select('*, user:users(id,name), branch:branches(id,name)')
+    .select('*, user:users(id,name), branch:branches(id,name,is_operational)')
     .eq('user_id', userId)
     .eq('status', 'active')
     .maybeSingle()
