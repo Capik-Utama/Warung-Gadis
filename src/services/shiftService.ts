@@ -1,5 +1,6 @@
 import { supabase } from '@/config/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { isBranchOperational } from '@/services/branchService'
 import type { Shift, ShiftHandover } from '@/types'
 
 export async function checkInShift(userId: string, branchId: string): Promise<Shift> {
@@ -7,6 +8,12 @@ export async function checkInShift(userId: string, branchId: string): Promise<Sh
   const auth = useAuthStore.getState()
   if (!auth.isBranchAllowed(branchId)) {
     throw new Error('Anda tidak memiliki akses ke cabang ini')
+  }
+
+  // Check if branch is currently operational (open for business)
+  const isOperational = await isBranchOperational(branchId)
+  if (!isOperational) {
+    throw new Error('Cabang ini sedang tutup. Tidak bisa masuk shift.')
   }
 
   const { data, error } = await supabase

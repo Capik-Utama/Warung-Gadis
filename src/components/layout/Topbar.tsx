@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, Select } from '@/components/ui/Input'
 import { closeAllShifts, checkInShift, getActiveShift } from '@/services/shiftService'
 import { loginUser } from '@/services/userService'
-import { fetchBranches } from '@/services/branchService'
+import { fetchBranches, setBranchOperational } from '@/services/branchService'
 import type { Branch } from '@/types'
 
 interface TopbarProps {
@@ -93,7 +93,10 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       // Tutup semua shift di cabang ini
       await closeAllShifts(branchId)
       
-      toast.success('Warung Berhasil Ditutup. Semua shift telah diakhiri.')
+      // Tandai cabang sebagai tidak operasional (tutup)
+      await setBranchOperational(branchId, false)
+      
+      toast.success('Warung Berhasil Ditutup. Semua shift telah diakhiri dan cabang ditutup.')
       setShowCloseModal(false)
       setPassword('')
     } catch (err) {
@@ -123,6 +126,9 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       // Verifikasi password
       await loginUser({ name: user.name, password })
       
+      // Tandai cabang sebagai operasional (buka)
+      await setBranchOperational(branchId, true)
+      
       // Buat shift baru (check-in)
       await checkInShift(user.id, branchId)
       
@@ -130,7 +136,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       const branch = branches.find(b => b.id === branchId)
       if (branch) setSelectedBranch(branch)
       
-      toast.success('Warung Berhasil Dibuka! Shift baru dimulai.')
+      toast.success('Warung Berhasil Dibuka! Cabang dibuka dan shift baru dimulai.')
       setShowOpenModal(false)
       setPassword('')
     } catch (err) {
@@ -140,13 +146,22 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     }
   }
 
-  // Filter branches for staff: only show allowed branches (reactive to auth store)
+  // Filter branches: show operational status
   const allowedBranches = useMemo(() => {
     if (!user) return []
     if (user.role === 'developer' || user.role === 'manager') return branches
     return branches.filter(b => allowedBranchIds.includes(b.id))
   }, [branches, user, allowedBranchIds])
-  const branchOptions = allowedBranches.map(b => ({ value: b.id, label: b.name }))
+  const branchOptions = allowedBranches.map(b => ({
+    value: b.id,
+    label: `${b.name}${b.is_operational ? '' : ' (TUTUP)'}`
+  }))
+  // For open-warung modal, only show branches that can be opened (currently closed but active)
+  const openableBranches = allowedBranches.filter(b => !b.is_operational)
+  const openBranchOptions = openableBranches.map(b => ({ value: b.id, label: b.name }))
+  // For close-warung modal, only show branches that are currently open
+  const closeableBranches = allowedBranches.filter(b => b.is_operational)
+  const closeBranchOptions = closeableBranches.map(b => ({ value: b.id, label: b.name }))
 
   return (
     <header
@@ -181,8 +196,21 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
             )}
           </h1>
           {selectedBranch && (
-            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {selectedBranch.name}
+            <p className="text-xs flex items-center gap-2">
+              <span style={{ color: 'var(--text-secondary)' }}>
+                {selectedBranch.name}
+              </span>
+              {selectedBranch.is_operational ? (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{ borderColor: 'var(--success)', background: 'rgba(34,197,94,0.15)', color: 'var(--success)' }}>
+                  BUKA
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{ borderColor: 'var(--danger)', background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
+                  TUTUP
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -343,11 +371,11 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           </div>
           <div className="text-left space-y-3">
             <Select
-              label="Pilih Cabang"
+              label="Pilih Cabang yang Ditutup"
               value={openBranchId}
               onChange={(e) => setOpenBranchId(e.target.value)}
-              options={branchOptions}
-              placeholder="Pilih cabang..."
+              options={openBranchOptions}
+              placeholder="Pilih cabang yang ingin dibuka..."
             />
             <Input
               label="Konfirmasi Password Anda"
@@ -393,11 +421,11 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
           </div>
           <div className="text-left space-y-3">
             <Select
-              label="Pilih Cabang"
+              label="Pilih Cabang yang Sedang Buka"
               value={closeBranchId}
               onChange={(e) => setCloseBranchId(e.target.value)}
-              options={branchOptions}
-              placeholder="Pilih cabang..."
+              options={closeBranchOptions}
+              placeholder="Pilih cabang yang ingin ditutup..."
             />
             <Input
               label="Konfirmasi Password Anda"

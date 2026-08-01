@@ -44,6 +44,7 @@ export interface Branch {
   address: string
   phone: string
   is_active: boolean
+  is_operational: boolean
   created_at: string
   updated_at: string
 }

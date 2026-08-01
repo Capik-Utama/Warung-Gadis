@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, LogIn, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { checkInShift, getActiveShift, autoHandover, getAllActiveShifts, fetchShiftHistory } from '@/services/shiftService'
-import { fetchBranches } from '@/services/branchService'
+import { fetchBranches, fetchOperationalBranches } from '@/services/branchService'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -41,11 +41,15 @@ export default function ShiftPage() {
 
   const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
 
-  // Filter branches for staff: only show allowed branches (reactive to auth store)
+  // Filter branches for staff: only show allowed branches that are operational
   const filteredBranches: Branch[] = useMemo(() => {
     if (!user) return []
-    if (user.role === 'developer' || user.role === 'manager') return branches
-    return branches.filter(b => allowedBranchIds.includes(b.id))
+    if (user.role === 'developer' || user.role === 'manager') {
+      // Developer & manager can see all branches but only check-in to operational ones
+      return branches.filter(b => b.is_operational)
+    }
+    // Staff can only see branches they have access to AND that are operational
+    return branches.filter(b => allowedBranchIds.includes(b.id) && b.is_operational)
   }, [branches, user, allowedBranchIds])
 
   useEffect(() => {
@@ -153,6 +157,7 @@ export default function ShiftPage() {
               loading={checkInMutation.isPending}
               onClick={() => checkInMutation.mutate()}
               icon={<LogIn size={16} />}
+              disabled={!checkInBranchId || !filteredBranches.find(b => b.id === checkInBranchId)?.is_operational}
             >
               MASUK (Mulai Shift)
             </Button>
