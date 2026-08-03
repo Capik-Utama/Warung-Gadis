@@ -23,10 +23,10 @@ export default function TransaksiPage() {
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => getActiveShift(user!.id),
-    enabled: !!user,
+    enabled: !!user && user.role === 'staff',
     refetchInterval: 30_000,
   })
-  const isReadOnly = !activeShift || !branchId
+  const isReadOnly = (user?.role === 'staff' && !activeShift) || !branchId
 
   const goToShiftPage = () => {
     toast(STAFF_SHIFT_REQUIRED_MESSAGE)

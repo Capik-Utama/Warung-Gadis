@@ -152,15 +152,21 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
       await setBranchOperational(branchId, true)
       qc.invalidateQueries({ queryKey: ['branches'] })
       
-      // Buat shift baru (check-in)
-      // Gunakan skipOperationalCheck=true karena kita baru saja membukanya
-      await checkInShift(user.id, branchId, true)
+      // Buat shift baru (check-in) HANYA untuk staff
+      if (user.role === 'staff') {
+        // Gunakan skipOperationalCheck=true karena kita baru saja membukanya
+        await checkInShift(user.id, branchId, true)
+      }
       
       // Set cabang terpilih
       const branch = branches.find(b => b.id === branchId)
       if (branch) setSelectedBranch(branch)
       
-      toast.success('Warung Berhasil Dibuka! Cabang dibuka dan shift baru dimulai.')
+      toast.success(
+        user.role === 'staff' 
+          ? 'Warung Berhasil Dibuka! Cabang dibuka dan shift baru dimulai.' 
+          : 'Warung Berhasil Dibuka! Cabang telah diaktifkan.'
+      )
       setShowOpenModal(false)
       setPassword('')
     } catch (err: any) {
@@ -287,38 +293,42 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
                 style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
               >
                 <div className="p-3 space-y-2">
-                  {!activeShift ? (
-                    <button
-                      onClick={() => { navigate('/shift'); setShowMenu(false); }}
-                      className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
-                      style={{ 
-                        background: 'rgba(34,197,94,0.05)', 
-                        color: 'var(--success)',
-                        borderColor: 'rgba(34,197,94,0.2)'
-                      }}
-                    >
-                      <LogIn size={24} />
-                      <div className="text-left">
-                        <p className="font-bold text-lg leading-tight">MASUK</p>
-                        <p className="text-[10px] opacity-70">Mulai Shift Baru</p>
-                      </div>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => { navigate('/shift'); setShowMenu(false); }}
-                      className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
-                      style={{ 
-                        background: 'rgba(245,158,11,0.05)', 
-                        color: 'var(--warning)',
-                        borderColor: 'rgba(245,158,11,0.2)'
-                      }}
-                    >
-                      <LogOut size={24} />
-                      <div className="text-left">
-                        <p className="font-bold text-lg leading-tight">PULANG</p>
-                        <p className="text-[10px] opacity-70">Serah Terima Shift</p>
-                      </div>
-                    </button>
+                  {user?.role === 'staff' && (
+                    <>
+                      {!activeShift ? (
+                        <button
+                          onClick={() => { navigate('/shift'); setShowMenu(false); }}
+                          className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
+                          style={{ 
+                            background: 'rgba(34,197,94,0.05)', 
+                            color: 'var(--success)',
+                            borderColor: 'rgba(34,197,94,0.2)'
+                          }}
+                        >
+                          <LogIn size={24} />
+                          <div className="text-left">
+                            <p className="font-bold text-lg leading-tight">MASUK</p>
+                            <p className="text-[10px] opacity-70">Mulai Shift Baru</p>
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { navigate('/shift'); setShowMenu(false); }}
+                          className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
+                          style={{ 
+                            background: 'rgba(245,158,11,0.05)', 
+                            color: 'var(--warning)',
+                            borderColor: 'rgba(245,158,11,0.2)'
+                          }}
+                        >
+                          <LogOut size={24} />
+                          <div className="text-left">
+                            <p className="font-bold text-lg leading-tight">PULANG</p>
+                            <p className="text-[10px] opacity-70">Serah Terima Shift</p>
+                          </div>
+                        </button>
+                      )}
+                    </>
                   )}
 
                   <div className="h-px my-2" style={{ background: 'var(--border-color)' }} />

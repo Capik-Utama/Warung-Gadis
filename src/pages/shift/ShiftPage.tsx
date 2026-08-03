@@ -143,35 +143,45 @@ export default function ShiftPage() {
               <span style={{ color: 'var(--text-secondary)' }}>Mulai</span>
               <span style={{ color: 'var(--text-primary)' }}>{formatDateTime(activeShift.check_in)}</span>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button
-                variant="warning"
-                onClick={() => setHandoverModal(true)}
-                icon={<LogOut size={16} />}
-                className="w-full"
-              >
-                PULANG
-              </Button>
-            </div>
+            {user?.role === 'staff' && (
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="warning"
+                  onClick={() => setHandoverModal(true)}
+                  icon={<LogOut size={16} />}
+                  className="w-full"
+                >
+                  PULANG
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            <Select
-              label="Pilih Cabang Shift *"
-              value={checkInBranchId}
-              onChange={(e) => setCheckInBranchId(e.target.value)}
-              options={filteredBranches.map((b) => ({ value: b.id, label: b.name }))}
-              placeholder="Pilih cabang"
-            />
-            <Button
-              variant="primary"
-              loading={checkInMutation.isPending}
-              onClick={() => checkInMutation.mutate()}
-              icon={<LogIn size={16} />}
-              disabled={!checkInBranchId || !filteredBranches.find(b => b.id === checkInBranchId)?.is_operational}
-            >
-              MASUK (Mulai Shift)
-            </Button>
+            {user?.role === 'staff' ? (
+              <>
+                <Select
+                  label="Pilih Cabang Shift *"
+                  value={checkInBranchId}
+                  onChange={(e) => setCheckInBranchId(e.target.value)}
+                  options={filteredBranches.map((b) => ({ value: b.id, label: b.name }))}
+                  placeholder="Pilih cabang"
+                />
+                <Button
+                  variant="primary"
+                  loading={checkInMutation.isPending}
+                  onClick={() => checkInMutation.mutate()}
+                  icon={<LogIn size={16} />}
+                  disabled={!checkInBranchId || !filteredBranches.find(b => b.id === checkInBranchId)?.is_operational}
+                >
+                  MASUK (Mulai Shift)
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Role <strong>{user?.role}</strong> tidak memerlukan masuk/pulang shift.
+              </p>
+            )}
           </div>
         )}
       </div>

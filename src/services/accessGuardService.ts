@@ -38,19 +38,22 @@ export async function ensureStaffWriteAccess(permissionKey?: PermissionKey): Pro
     throw new Error('Anda tidak memiliki akses ke cabang ini')
   }
 
-  const { data: activeShift, error } = await supabase
-    .from('shifts')
-    .select('id, branch_id')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle()
+  // Developer and Manager don't need active shift to perform write operations
+  if (user.role === 'staff') {
+    const { data: activeShift, error } = await supabase
+      .from('shifts')
+      .select('id, branch_id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
 
-  if (error) {
-    throw error
-  }
+    if (error) {
+      throw error
+    }
 
-  if (!activeShift || activeShift.branch_id !== selectedBranch.id) {
-    throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+    if (!activeShift || activeShift.branch_id !== selectedBranch.id) {
+      throw new Error(STAFF_SHIFT_REQUIRED_MESSAGE)
+    }
   }
 
   // Check if branch is operational
