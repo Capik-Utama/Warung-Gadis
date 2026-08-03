@@ -293,7 +293,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
                 style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
               >
                 <div className="p-3 space-y-2">
-                  {user?.role === 'staff' && user?.role !== 'developer' && user?.role !== 'manager' && (
+                  {user?.role === 'staff' && (user.role as string) !== 'developer' && (user.role as string) !== 'manager' && (
                     <>
                       {!activeShift ? (
                         <button
