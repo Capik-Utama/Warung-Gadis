@@ -88,17 +88,18 @@ export default function ShiftPage() {
   })
 
   const handoverMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!activeShift || !user) throw new Error('Tidak ada shift aktif')
       
       // Jika manager/developer dan tidak pilih pengganti, tutup shift langsung
       if ((user.role === 'manager' || user.role === 'developer') && !replaceUserId) {
-        return closeShift(activeShift.id)
+        await closeShift(activeShift.id)
+        return
       }
 
       if (!replaceUserId) throw new Error('Pilih staf pengganti')
       
-      return autoHandover({
+      await autoHandover({
         fromShiftId: activeShift.id,
         fromUserId: user.id,
         toUserId: replaceUserId,
