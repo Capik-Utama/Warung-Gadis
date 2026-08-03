@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, Clock, AlertCircle, Minus, Plus, Star,
+  CreditCard, Banknote, QrCode, User, Clock, AlertCircle, Minus, Plus, Star, GitBranch,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -43,7 +43,11 @@ function useFavorites(userId: string) {
 
 export default function KasirPage() {
   const navigate = useNavigate()
-  const { user, selectedBranch, hasPermission, setSelectedBranch } = useAuthStore()
+  const { user, selectedBranch, hasPermission } = useAuthStore()
+
+  // Developer & Manager harus pilih cabang untuk transaksi
+  const isDeveloperOrManager = user?.role === 'developer' || user?.role === 'manager'
+  const requiresBranch = isDeveloperOrManager && !selectedBranch
   const canAccessKasir = hasPermission('access_kasir')
   const cart = useCartStore()
   const qc = useQueryClient()
@@ -318,6 +322,21 @@ export default function KasirPage() {
         </div>
         <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Akses Ditolak</h2>
         <p style={{ color: 'var(--text-secondary)' }}>Anda tidak memiliki hak akses untuk menggunakan Kasir.</p>
+      </div>
+    )
+  }
+
+  if (requiresBranch) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+          <GitBranch size={32} className="text-blue-500" />
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Pilih Cabang</h2>
+        <p style={{ color: 'var(--text-secondary)' }} className="mb-6">Silakan pilih cabang terlebih dahulu sebelum melakukan transaksi.</p>
+        <Button variant="primary" onClick={() => navigate('/select-branch')}>
+          Pilih Cabang
+        </Button>
       </div>
     )
   }
@@ -885,12 +904,6 @@ function PendingView({
       setSelectedItems(new Set())
       onRefresh()
       qc.invalidateQueries({ queryKey: ['today-stats'] })
-
-      // Developer & Manager harus pilih cabang lagi setelah transaksi
-      const { user, setSelectedBranch } = useAuthStore.getState()
-      if (user?.role === 'developer' || user?.role === 'manager') {
-        setSelectedBranch(null)
-      }
     } catch (e: any) {
       toast.error(e.message || 'Gagal memproses pembayaran')
     }
@@ -962,12 +975,6 @@ function PendingView({
       setSelectedItems(new Set())
       onRefresh()
       qc.invalidateQueries({ queryKey: ['debts'] })
-
-      // Developer & Manager harus pilih cabang lagi setelah transaksi
-      const { user, setSelectedBranch } = useAuthStore.getState()
-      if (user?.role === 'developer' || user?.role === 'manager') {
-        setSelectedBranch(null)
-      }
     } catch (e: any) {
       toast.error(e.message || 'Gagal mencatat member')
     }

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { DollarSign, ChevronRight, Search, Users, Wallet } from 'lucide-react'
+import { DollarSign, ChevronRight, Search, Users, Wallet, GitBranch } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   fetchDebts,
@@ -65,6 +65,10 @@ export default function MemberPage() {
   const { user, selectedBranch, hasPermission } = useAuthStore()
   const canAccessMember = hasPermission('access_hutang')
   const qc = useQueryClient()
+
+  // Developer & Manager harus pilih cabang untuk transaksi
+  const isDeveloperOrManager = user?.role === 'developer' || user?.role === 'manager'
+  const requiresBranch = isDeveloperOrManager && !selectedBranch
 
   const branchId = selectedBranch?.id ?? ''
   const { data: activeShift } = useQuery({
@@ -166,12 +170,6 @@ export default function MemberPage() {
       setExpandedDebtId(null)
       setPayments([])
       if (result.remaining <= 0) setOpenName(null)
-
-      // Developer & Manager harus pilih cabang lagi setelah transaksi
-      const { user: currentUser, setSelectedBranch } = useAuthStore.getState()
-      if (currentUser?.role === 'developer' || currentUser?.role === 'manager') {
-        setSelectedBranch(null)
-      }
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -188,6 +186,21 @@ export default function MemberPage() {
         <p style={{ color: 'var(--text-secondary)' }}>
           Anda tidak memiliki hak akses untuk mengelola Member.
         </p>
+      </div>
+    )
+  }
+
+  if (requiresBranch) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+          <DollarSign size={32} className="text-blue-500" />
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Pilih Cabang</h2>
+        <p style={{ color: 'var(--text-secondary)' }} className="mb-6">Silakan pilih cabang terlebih dahulu sebelum mengelola member.</p>
+        <Button variant="primary" onClick={() => navigate('/select-branch')}>
+          Pilih Cabang
+        </Button>
       </div>
     )
   }

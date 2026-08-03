@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
@@ -38,14 +38,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 function RequireBranch({ children }: { children: React.ReactNode }) {
-  const { selectedBranch } = useAuthStore()
-  const location = useLocation()
-  
-  // All roles MUST select a branch before accessing main layout
-  if (!selectedBranch) {
-    return <Navigate to="/select-branch" state={{ from: location }} replace />
-  }
-
+  // Branch selection is now optional for most pages
+  // Only transaction pages will enforce branch selection
   return <>{children}</>
 }
 
@@ -60,7 +54,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/select-branch" element={<RequireAuth><BranchSelectionPage /></RequireAuth>} />
           <Route path="/setup-database" element={<SetupDatabase />} />
-          <Route path="/" element={<RequireAuth><RequireBranch><MainLayout /></RequireBranch></RequireAuth>}>
+          <Route path="/" element={<RequireAuth><MainLayout /></RequireAuth>}>
             <Route index element={<DashboardPage />} />
             <Route path="kasir" element={<KasirPage />} />
             <Route path="produk" element={<ProdukPage />} />
