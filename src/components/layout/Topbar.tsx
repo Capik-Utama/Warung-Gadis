@@ -37,7 +37,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => getActiveShift(user!.id),
-    enabled: !!user && isStaff,
+    enabled: !!user,
     refetchInterval: 30_000,
   })
 
@@ -287,37 +287,39 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
                 style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
               >
                 <div className="p-3 space-y-2">
-                  <button
-                    onClick={() => { navigate('/shift'); setShowMenu(false); }}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
-                    style={{ 
-                      background: 'rgba(34,197,94,0.05)', 
-                      color: 'var(--success)',
-                      borderColor: 'rgba(34,197,94,0.2)'
-                    }}
-                  >
-                    <LogIn size={24} />
-                    <div className="text-left">
-                      <p className="font-bold text-lg leading-tight">MASUK</p>
-                      <p className="text-[10px] opacity-70">Mulai Shift Baru</p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => { navigate('/shift'); setShowMenu(false); }}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
-                    style={{ 
-                      background: 'rgba(245,158,11,0.05)', 
-                      color: 'var(--warning)',
-                      borderColor: 'rgba(245,158,11,0.2)'
-                    }}
-                  >
-                    <LogOut size={24} />
-                    <div className="text-left">
-                      <p className="font-bold text-lg leading-tight">PULANG</p>
-                      <p className="text-[10px] opacity-70">Serah Terima Shift</p>
-                    </div>
-                  </button>
+                  {!activeShift ? (
+                    <button
+                      onClick={() => { navigate('/shift'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
+                      style={{ 
+                        background: 'rgba(34,197,94,0.05)', 
+                        color: 'var(--success)',
+                        borderColor: 'rgba(34,197,94,0.2)'
+                      }}
+                    >
+                      <LogIn size={24} />
+                      <div className="text-left">
+                        <p className="font-bold text-lg leading-tight">MASUK</p>
+                        <p className="text-[10px] opacity-70">Mulai Shift Baru</p>
+                      </div>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { navigate('/shift'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-3 p-4 rounded-xl transition-colors border"
+                      style={{ 
+                        background: 'rgba(245,158,11,0.05)', 
+                        color: 'var(--warning)',
+                        borderColor: 'rgba(245,158,11,0.2)'
+                      }}
+                    >
+                      <LogOut size={24} />
+                      <div className="text-left">
+                        <p className="font-bold text-lg leading-tight">PULANG</p>
+                        <p className="text-[10px] opacity-70">Serah Terima Shift</p>
+                      </div>
+                    </button>
+                  )}
 
                   <div className="h-px my-2" style={{ background: 'var(--border-color)' }} />
 
