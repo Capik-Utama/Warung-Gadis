@@ -86,11 +86,11 @@ body * {
   -webkit-text-stroke: 0.2px rgba(255, 255, 255, 0.25);
 }
 
-.text-[10px],
+.text-\[10px\],
 .text-\[11px\] {
   -webkit-text-stroke: 0.15px rgba(0, 0, 0, 0.3);
 }
-[data-theme="blue-black"] .text-[10px],
+[data-theme="blue-black"] .text-\[10px\],
 [data-theme="blue-black"] .text-\[11px\] {
   -webkit-text-stroke: 0.15px rgba(255, 255, 255, 0.2);
 }

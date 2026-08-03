@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { statusBadge } from '@/components/ui/Badge'
+import { statusBadge } from '@/components/ui/badgeHelpers'
 import type { Branch } from '@/types'
 
 const def = { name: '', address: '', phone: '', is_active: true, is_operational: true }
@@ -115,7 +115,7 @@ export default function CabangPage() {
 }
 
 // Icon for toggling branch operational status
-const StoreToggleIcon = ({ isOperational, size }: { isOperational: boolean; size: number }) => (
+const StoreToggleIcon = ({ isOperational: _isOperational, size }: { isOperational: boolean; size: number }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     <polyline points="9 22 9 12 15 12 15 22" />

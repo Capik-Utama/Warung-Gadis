@@ -3,13 +3,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
-  Users, GitBranch, Coffee, Mic2, Tv, Clock, ChevronRight,
+  GitBranch, Coffee, Mic2, Tv, Clock, ChevronRight,
 } from 'lucide-react'
 import { StatCard } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-import { getTodayStats, getMonthlyRevenue, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches, getTodayStaffStats } from '@/services/reportService'
+import { getTodayStats, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches, getTodayStaffStats } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
 import { fetchDebts } from '@/services/debtService'
 import { getActiveShift } from '@/services/shiftService'
@@ -24,12 +24,6 @@ function OwnerDashboard() {
     queryKey: ['today-stats', branchId],
     queryFn: () => getTodayStats(branchId),
     refetchInterval: 30_000,
-  })
-
-  const { data: monthlyRevenue = 0 } = useQuery({
-    queryKey: ['monthly-revenue', branchId],
-    queryFn: () => getMonthlyRevenue(branchId),
-    refetchInterval: 60_000,
   })
 
   const { data: topProducts = [] } = useQuery({
@@ -340,8 +334,6 @@ function StaffDashboard() {
     enabled: !!userId,
     refetchInterval: 30_000,
   })
-  const isReadOnly = !activeShift || !branchId
-
   const { data: todayStaffStats } = useQuery({
     queryKey: ['today-staff-stats', branchId, userId],
     queryFn: () => getTodayStaffStats(branchId, userId),
