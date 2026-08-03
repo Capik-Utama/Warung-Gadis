@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { GitBranch, LogOut, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -11,7 +11,10 @@ import type { Branch } from '@/types'
 
 export default function BranchSelectionPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, allowedBranchIds, setSelectedBranch, logout } = useAuthStore()
+
+  const from = (location.state as any)?.from?.pathname || '/'
 
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ['branches'],
@@ -35,7 +38,7 @@ export default function BranchSelectionPage() {
     }
     setSelectedBranch(branch)
     toast.success(`Cabang ${branch.name} dipilih`)
-    navigate('/')
+    navigate(from, { replace: true })
   }
 
   const handleLogout = () => {

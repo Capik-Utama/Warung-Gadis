@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
@@ -39,10 +39,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RequireBranch({ children }: { children: React.ReactNode }) {
   const { selectedBranch } = useAuthStore()
+  const location = useLocation()
   
   // All roles MUST select a branch before accessing main layout
   if (!selectedBranch) {
-    return <Navigate to="/select-branch" replace />
+    return <Navigate to="/select-branch" state={{ from: location }} replace />
   }
 
   return <>{children}</>

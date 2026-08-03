@@ -43,7 +43,7 @@ function useFavorites(userId: string) {
 
 export default function KasirPage() {
   const navigate = useNavigate()
-  const { user, selectedBranch, hasPermission } = useAuthStore()
+  const { user, selectedBranch, hasPermission, setSelectedBranch } = useAuthStore()
   const canAccessKasir = hasPermission('access_kasir')
   const cart = useCartStore()
   const qc = useQueryClient()
@@ -203,6 +203,11 @@ export default function KasirPage() {
           setDebtModal(false)
           refetchPending()
           qc.invalidateQueries({ queryKey: ['products'] })
+
+          // Developer & Manager harus pilih cabang lagi setelah transaksi
+          if (user?.role === 'developer' || user?.role === 'manager') {
+            setSelectedBranch(null)
+          }
           return 'Berhasil'
         },
         error: (e: Error) => e.message,
@@ -241,6 +246,11 @@ export default function KasirPage() {
       qc.invalidateQueries({ queryKey: ['today-stats'] })
       qc.invalidateQueries({ queryKey: ['products'] })
       refetchPending()
+      
+      // Developer & Manager harus pilih cabang lagi setelah transaksi
+      if (user?.role === 'developer' || user?.role === 'manager') {
+        setSelectedBranch(null)
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -289,6 +299,11 @@ export default function KasirPage() {
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['debts'] })
       refetchPending()
+
+      // Developer & Manager harus pilih cabang lagi setelah transaksi
+      if (user?.role === 'developer' || user?.role === 'manager') {
+        setSelectedBranch(null)
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -870,6 +885,12 @@ function PendingView({
       setSelectedItems(new Set())
       onRefresh()
       qc.invalidateQueries({ queryKey: ['today-stats'] })
+
+      // Developer & Manager harus pilih cabang lagi setelah transaksi
+      const { user, setSelectedBranch } = useAuthStore.getState()
+      if (user?.role === 'developer' || user?.role === 'manager') {
+        setSelectedBranch(null)
+      }
     } catch (e: any) {
       toast.error(e.message || 'Gagal memproses pembayaran')
     }
@@ -941,6 +962,12 @@ function PendingView({
       setSelectedItems(new Set())
       onRefresh()
       qc.invalidateQueries({ queryKey: ['debts'] })
+
+      // Developer & Manager harus pilih cabang lagi setelah transaksi
+      const { user, setSelectedBranch } = useAuthStore.getState()
+      if (user?.role === 'developer' || user?.role === 'manager') {
+        setSelectedBranch(null)
+      }
     } catch (e: any) {
       toast.error(e.message || 'Gagal mencatat member')
     }

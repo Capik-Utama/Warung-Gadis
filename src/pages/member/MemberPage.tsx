@@ -166,6 +166,12 @@ export default function MemberPage() {
       setExpandedDebtId(null)
       setPayments([])
       if (result.remaining <= 0) setOpenName(null)
+
+      // Developer & Manager harus pilih cabang lagi setelah transaksi
+      const { user: currentUser, setSelectedBranch } = useAuthStore.getState()
+      if (currentUser?.role === 'developer' || currentUser?.role === 'manager') {
+        setSelectedBranch(null)
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   })
