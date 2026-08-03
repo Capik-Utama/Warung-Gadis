@@ -19,6 +19,7 @@ interface NavItem {
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', path: '/', icon: <LayoutDashboard size={18} /> },
+  { key: 'select_branch', label: 'Pilih Cabang', path: '/select-branch', icon: <GitBranch size={18} /> },
   { key: 'kasir', label: 'Kasir', path: '/kasir', icon: <ShoppingCart size={18} /> },
   { key: 'produk', label: 'Produk', path: '/produk', icon: <Package size={18} /> },
   { key: 'kategori', label: 'Kategori', path: '/kategori', icon: <Tag size={18} /> },

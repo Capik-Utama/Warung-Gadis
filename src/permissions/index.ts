@@ -4,6 +4,7 @@ import type { UserRole, PermissionKey } from '@/types'
 export const ROLE_MENUS: Record<UserRole, string[]> = {
   developer: [
     'dashboard',
+    'select_branch',
     'kasir',
     'produk',
     'kategori',
@@ -20,6 +21,7 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
   ],
   manager: [
     'dashboard',
+    'select_branch',
     'kasir',
     'produk',
     'kategori',
@@ -34,7 +36,7 @@ export const ROLE_MENUS: Record<UserRole, string[]> = {
     'backup',
     'theme',
   ],
-  staff: ['dashboard', 'shift'],
+  staff: ['dashboard', 'select_branch', 'shift'],
 }
 
 // Map menu keys to required permissions (optional, if not in ROLE_MENUS)

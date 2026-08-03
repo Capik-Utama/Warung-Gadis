@@ -8,6 +8,7 @@ import { applyTheme } from '@/config/theme'
 import { MainLayout } from '@/components/layout/MainLayout'
 
 import LoginPage from '@/pages/auth/LoginPage'
+import BranchSelectionPage from '@/pages/auth/BranchSelectionPage'
 import SetupDatabase from '@/pages/SetupDatabase'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import KasirPage from '@/pages/kasir/KasirPage'
@@ -36,6 +37,15 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RequireBranch({ children }: { children: React.ReactNode }) {
+  const { user, selectedBranch } = useAuthStore()
+  // Developer and manager don't necessarily NEED to select a branch immediately, 
+  // but for consistency we can enforce it if that's the requirement.
+  // The user said "staf harus memilih cabang", so let's enforce it for everyone for better UX.
+  if (user && !selectedBranch) return <Navigate to="/select-branch" replace />
+  return <>{children}</>
+}
+
 function App() {
   const { theme } = useThemeStore()
   useEffect(() => { applyTheme(theme) }, [theme])
@@ -45,8 +55,9 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/select-branch" element={<RequireAuth><BranchSelectionPage /></RequireAuth>} />
           <Route path="/setup-database" element={<SetupDatabase />} />
-          <Route path="/" element={<RequireAuth><MainLayout /></RequireAuth>}>
+          <Route path="/" element={<RequireAuth><RequireBranch><MainLayout /></RequireBranch></RequireAuth>}>
             <Route index element={<DashboardPage />} />
             <Route path="kasir" element={<KasirPage />} />
             <Route path="produk" element={<ProdukPage />} />
