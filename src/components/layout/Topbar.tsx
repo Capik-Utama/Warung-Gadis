@@ -64,7 +64,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     try {
       const list = await fetchBranches()
       setBranches(list)
-    } catch (_err) {
+    } catch {
       toast.error('Gagal memuat daftar cabang')
     } finally {
       setBranchesLoading(false)
