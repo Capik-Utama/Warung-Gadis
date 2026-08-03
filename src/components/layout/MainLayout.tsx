@@ -17,6 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/user': 'Manajemen User',
   '/cabang': 'Cabang',
   '/pengaturan': 'Pengaturan',
+  '/pengaturan/sistem': 'Pengaturan Sistem',
   '/backup': 'Backup & Restore',
   '/theme': 'Tema Aplikasi',
 }

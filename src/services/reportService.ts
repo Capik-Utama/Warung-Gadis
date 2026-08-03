@@ -1,17 +1,40 @@
 import { supabase } from '@/config/supabase'
 import type { DailySales, TopProduct, StaffSales } from '@/types'
+import {
+  getBusinessDayBounds,
+  getBusinessDayBoundsForDate,
+  getBusinessDayLabels,
+  getBusinessDayLabel,
+} from './businessDayHelper'
+import { getResetHour } from './systemSettingService'
+
+// ─── Helpers internal ────────────────────────────────────────────────────────
+
+/**
+ * Mengambil jam reset dan bounds hari ini.
+ * Digunakan sebagai satu-satunya sumber kebenaran untuk "hari ini" di seluruh laporan.
+ */
+async function getTodayBounds(): Promise<{ from: string; to: string }> {
+  const resetHour = await getResetHour()
+  return getBusinessDayBounds(resetHour)
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function getDailySales(branchId: string, days = 30): Promise<DailySales[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
+  const resetHour = await getResetHour()
+  const labels = getBusinessDayLabels(days, resetHour)
+  const oldestLabel = labels[0]
+  const since = getBusinessDayBoundsForDate(oldestLabel, resetHour)
 
   // 1. Get sales
   let trxQuery = supabase
     .from('transactions')
     .select('created_at, total_amount')
     .eq('status', 'paid')
-    .gte('created_at', since.toISOString())
-  
+    .gte('created_at', since.from)
+    .lt('created_at', since.to)
+
   if (branchId) {
     trxQuery = trxQuery.eq('branch_id', branchId)
   }
@@ -23,7 +46,8 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
   let payQuery = supabase
     .from('debt_payments')
     .select('created_at, amount')
-    .gte('created_at', since.toISOString())
+    .gte('created_at', since.from)
+    .lt('created_at', since.to)
 
   if (branchId) {
     payQuery = payQuery.eq('branch_id', branchId)
@@ -34,18 +58,21 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
 
   const grouped = new Map<string, { total: number; count: number }>()
 
-  // Process sales
+  // Initialize semua label agar grafik konsisten
+  labels.forEach((label) => grouped.set(label, { total: 0, count: 0 }))
+
+  // Process sales - grup berdasarkan business day
   ;(trxData ?? []).forEach((row: any) => {
-    const date = row.created_at.slice(0, 10)
-    const existing = grouped.get(date) ?? { total: 0, count: 0 }
-    grouped.set(date, { total: existing.total + row.total_amount, count: existing.count + 1 })
+    const businessDay = getBusinessDayLabel(row.created_at, resetHour)
+    const existing = grouped.get(businessDay) ?? { total: 0, count: 0 }
+    grouped.set(businessDay, { total: existing.total + row.total_amount, count: existing.count + 1 })
   })
 
-  // Process debt payments
+  // Process debt payments - grup berdasarkan business day
   ;(payData ?? []).forEach((row: any) => {
-    const date = row.created_at.slice(0, 10)
-    const existing = grouped.get(date) ?? { total: 0, count: 0 }
-    grouped.set(date, { total: existing.total + row.amount, count: existing.count + 1 })
+    const businessDay = getBusinessDayLabel(row.created_at, resetHour)
+    const existing = grouped.get(businessDay) ?? { total: 0, count: 0 }
+    grouped.set(businessDay, { total: existing.total + row.amount, count: existing.count + 1 })
   })
 
   return Array.from(grouped.entries()).map(([date, v]) => ({
@@ -56,14 +83,15 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
 }
 
 export async function getTodayStats(branchId: string) {
-  const today = new Date().toISOString().slice(0, 10)
+  const bounds = await getTodayBounds()
 
   // Get paid transactions
   let trxQuery = supabase
     .from('transactions')
     .select('total_amount, status')
     .eq('status', 'paid')
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', bounds.from)
+    .lt('created_at', bounds.to)
 
   if (branchId) {
     trxQuery = trxQuery.eq('branch_id', branchId)
@@ -76,7 +104,8 @@ export async function getTodayStats(branchId: string) {
   let payQuery = supabase
     .from('debt_payments')
     .select('amount')
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', bounds.from)
+    .lt('created_at', bounds.to)
 
   if (branchId) {
     payQuery = payQuery.eq('branch_id', branchId)
@@ -95,6 +124,8 @@ export async function getTodayStats(branchId: string) {
 }
 
 export async function getMonthlyRevenue(branchId: string): Promise<number> {
+  // Monthly revenue tetap menggunakan tanggal kalender (1st of month)
+  // karena bulanan tidak terpengaruh jam reset
   const start = new Date()
   start.setDate(1)
   start.setHours(0, 0, 0, 0)
@@ -131,10 +162,15 @@ export async function getMonthlyRevenue(branchId: string): Promise<number> {
 }
 
 export async function getTopProducts(branchId: string, limit = 10): Promise<TopProduct[]> {
+  // Top products: ambil dari business day hari ini
+  const bounds = await getTodayBounds()
+
   let query = supabase
     .from('transaction_items')
-    .select('product_id, quantity, subtotal, product:products(name), transaction:transactions!inner(branch_id, status)')
+    .select('product_id, quantity, subtotal, product:products(name), transaction:transactions!inner(branch_id, status, created_at)')
     .eq('transaction.status', 'paid')
+    .gte('transaction.created_at', bounds.from)
+    .lt('transaction.created_at', bounds.to)
 
   if (branchId) {
     query = query.eq('transaction.branch_id', branchId)
@@ -167,7 +203,7 @@ export async function getTopProducts(branchId: string, limit = 10): Promise<TopP
 }
 
 export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
-  const today = new Date().toISOString().slice(0, 10)
+  const bounds = await getTodayBounds()
 
   // 1. Get direct sales
   const { data: sales, error: salesError } = await supabase
@@ -175,7 +211,8 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
     .select('user_id, total_amount, user:users(name)')
     .eq('branch_id', branchId)
     .eq('status', 'paid')
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', bounds.from)
+    .lt('created_at', bounds.to)
 
   if (salesError) throw salesError
 
@@ -184,7 +221,8 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
     .from('debt_payments')
     .select('user_id, amount, user:users(name)')
     .eq('branch_id', branchId)
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', bounds.from)
+    .lt('created_at', bounds.to)
 
   if (debtError) throw debtError
 
@@ -221,8 +259,6 @@ export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
     grouped.set(row.user_id, {
       ...existing,
       total: existing.total + row.amount,
-      // Note: We don't increment transaction_count for debt payments to avoid double counting 
-      // or we can count it as a "payment activity"
     })
   })
 
@@ -292,7 +328,7 @@ export async function getLowStockByBranch(branchId: string) {
 
 // Ambil statistik hari ini untuk staf tertentu di cabang tertentu
 export async function getTodayStaffStats(branchId: string, userId: string) {
-  const today = new Date().toISOString().slice(0, 10)
+  const bounds = await getTodayBounds()
 
   // Get paid transactions by this staff
   let trxQuery = supabase
@@ -300,7 +336,8 @@ export async function getTodayStaffStats(branchId: string, userId: string) {
     .select('total_amount')
     .eq('status', 'paid')
     .eq('user_id', userId)
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', bounds.from)
+    .lt('created_at', bounds.to)
 
   if (branchId) {
     trxQuery = trxQuery.eq('branch_id', branchId)
@@ -314,7 +351,8 @@ export async function getTodayStaffStats(branchId: string, userId: string) {
     .from('debt_payments')
     .select('amount')
     .eq('user_id', userId)
-    .gte('created_at', `${today}T00:00:00`)
+    .gte('created_at', bounds.from)
+    .lt('created_at', bounds.to)
 
   if (branchId) {
     payQuery = payQuery.eq('branch_id', branchId)

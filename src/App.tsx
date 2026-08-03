@@ -21,6 +21,7 @@ import UserPage from '@/pages/user/UserPage'
 import CabangPage from '@/pages/cabang/CabangPage'
 import ShiftPage from '@/pages/shift/ShiftPage'
 import PengaturanPage from '@/pages/pengaturan/PengaturanPage'
+import SystemSettingsPage from '@/pages/pengaturan/SystemSettingsPage'
 import ThemePage from '@/pages/pengaturan/ThemePage'
 import BackupPage from '@/pages/backup/BackupPage'
 import FavoritPage from '@/pages/favorit/FavoritPage'
@@ -60,6 +61,7 @@ function App() {
             <Route path="shift" element={<ShiftPage />} />
             <Route path="favorit" element={<FavoritPage />} />
             <Route path="pengaturan" element={<PengaturanPage />} />
+            <Route path="pengaturan/sistem" element={<SystemSettingsPage />} />
             <Route path="theme" element={<ThemePage />} />
             <Route path="backup" element={<BackupPage />} />
           </Route>
