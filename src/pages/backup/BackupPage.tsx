@@ -53,7 +53,7 @@ export default function BackupPage() {
       XLSX.writeFile(wb, `WG-POS-FULL-BACKUP-${new Date().toISOString().slice(0,10)}.xlsx`)
       toast.dismiss(t)
       toast.success('Backup Excel berhasil diunduh!')
-    } catch (err) {
+    } catch (_err) {
       toast.dismiss(t)
       toast.error('Gagal melakukan backup Excel')
     } finally {
@@ -94,7 +94,7 @@ export default function BackupPage() {
       toast.success('Restore data dari Excel berhasil!')
       // Refresh halaman agar data baru terlihat
       setTimeout(() => window.location.reload(), 1500)
-    } catch (err) {
+    } catch (_err) {
       toast.dismiss(t)
       toast.error('Gagal restore Excel. Pastikan format file benar.')
     }

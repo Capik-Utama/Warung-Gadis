@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, X, Clock, AlertCircle, Minus, Plus, Star,
+  CreditCard, Banknote, QrCode, User, Clock, AlertCircle, Minus, Plus, Star,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { formatCurrency } from '@/utils/format'
-import type { Product, PaymentMethod, Transaction, TransactionItem } from '@/types'
+import type { Product, PaymentMethod, TransactionItem } from '@/types'
 
 const STORAGE_KEY = 'wg-favorites'
 
@@ -208,7 +208,7 @@ export default function KasirPage() {
         error: (e: Error) => e.message,
       },
     )
-  }, [isReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc])
+  }, [isReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc, cart])
 
   // BAYAR
   const payMutation = useMutation({
@@ -379,7 +379,6 @@ export default function KasirPage() {
         {activeTab === 'pending' ? (
           <PendingView
             items={pendingItems}
-            onRefetch={refetchPending}
             branchId={branchId}
             userId={user?.id ?? ''}
             isReadOnly={isReadOnly}
@@ -781,7 +780,6 @@ function TabButton({
 
 function PendingView({
   items,
-  onRefetch,
   branchId,
   userId,
   isReadOnly,
@@ -799,7 +797,6 @@ function PendingView({
     code: string
     branch_id: string
   }[]
-  onRefetch: () => void
   branchId: string
   userId: string
   isReadOnly: boolean

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Home, LogOut, Clock, LogIn, Palette, Store, ShieldCheck, X, Store as StoreOpen } from 'lucide-react'
+import { Home, LogOut, LogIn, Palette, Store, ShieldCheck, Store as StoreOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { WGLogo } from '@/components/shared/Logo'
 import { useNavigate } from 'react-router-dom'
@@ -30,7 +30,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const [closeBranchId, setCloseBranchId] = useState('')
   const [openBranchId, setOpenBranchId] = useState('')
   const [branches, setBranches] = useState<Branch[]>([])
-  const [branchesLoading, setBranchesLoading] = useState(false)
+  const [_branchesLoading, setBranchesLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const isStaff = user?.role === 'staff'
 
@@ -64,7 +64,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     try {
       const list = await fetchBranches()
       setBranches(list)
-    } catch (err) {
+    } catch (_err) {
       toast.error('Gagal memuat daftar cabang')
     } finally {
       setBranchesLoading(false)
@@ -183,10 +183,6 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     return source.filter(b => allowedBranchIds.includes(b.id))
   }, [branches, freshBranches, user, allowedBranchIds])
   
-  const branchOptions = allowedBranches.map(b => ({
-    value: b.id,
-    label: `${b.name}${b.is_operational ? '' : ' (TUTUP)'}`
-  }))
   // For open-warung modal, only show branches that can be opened (currently closed but active)
   const openableBranches = allowedBranches.filter(b => !b.is_operational)
   const openBranchOptions = openableBranches.map(b => ({ value: b.id, label: b.name }))

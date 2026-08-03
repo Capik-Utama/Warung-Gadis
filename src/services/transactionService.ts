@@ -115,7 +115,7 @@ export async function markTransactionAsDebt(
   transactionId: string,
   customerName: string,
   customerPhone: string,
-  customerAddress?: string,
+  _customerAddress?: string,
 ): Promise<void> {
   await ensureStaffWriteAccess()
 

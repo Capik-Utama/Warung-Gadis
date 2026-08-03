@@ -7,10 +7,10 @@ import { fetchBranches } from '@/services/branchService'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { roleBadge, statusBadge } from '@/components/ui/Badge'
+import { roleBadge, statusBadge } from '@/components/ui/badgeHelpers'
 import { useAuthStore } from '@/store/authStore'
 import { ALL_PERMISSIONS, ROLE_DEFAULT_PERMISSIONS } from '@/permissions'
-import type { User, PermissionKey, UserRole, Branch } from '@/types'
+import type { User, PermissionKey, UserRole } from '@/types'
 
 interface UserForm {
   name: string

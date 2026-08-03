@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download, FileSpreadsheet, FileText, TrendingUp, Users, Package } from 'lucide-react'
+import { FileSpreadsheet, FileText, TrendingUp, Users, Package } from 'lucide-react'
 import { getDailySales, getTopProducts, getStaffSales, getMonthlyRevenue } from '@/services/reportService'
 import { StatCard } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
