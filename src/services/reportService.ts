@@ -24,8 +24,12 @@ async function getTodayBounds(): Promise<{ from: string; to: string }> {
 export async function getDailySales(branchId: string, days = 30): Promise<DailySales[]> {
   const resetHour = await getResetHour()
   const labels = getBusinessDayLabels(days, resetHour)
+  if (labels.length === 0) return []
+
   const oldestLabel = labels[0]
+  const latestLabel = labels[labels.length - 1]
   const since = getBusinessDayBoundsForDate(oldestLabel, resetHour)
+  const until = getBusinessDayBoundsForDate(latestLabel, resetHour)
 
   // 1. Get sales
   let trxQuery = supabase
@@ -33,7 +37,7 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
     .select('created_at, total_amount')
     .eq('status', 'paid')
     .gte('created_at', since.from)
-    .lt('created_at', since.to)
+    .lt('created_at', until.to)
 
   if (branchId) {
     trxQuery = trxQuery.eq('branch_id', branchId)
@@ -47,7 +51,7 @@ export async function getDailySales(branchId: string, days = 30): Promise<DailyS
     .from('debt_payments')
     .select('created_at, amount')
     .gte('created_at', since.from)
-    .lt('created_at', since.to)
+    .lt('created_at', until.to)
 
   if (branchId) {
     payQuery = payQuery.eq('branch_id', branchId)

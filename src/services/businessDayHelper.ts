@@ -15,6 +15,8 @@
 
 import { getResetHour } from './systemSettingService'
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
 /**
  * Menghitung batas waktu business day untuk "hari ini".
  *
@@ -23,15 +25,18 @@ import { getResetHour } from './systemSettingService'
  */
 export function getBusinessDayBounds(resetHour: number): { from: string; to: string } {
   const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const date = now.getDate()
 
-  // Awal business day hari ini: tanggal sekarang pada jam reset
-  const from = new Date(year, month, date, resetHour, 0, 0, 0)
+  // Base start = tanggal kalender hari ini pada jam reset
+  const from = new Date(now)
+  from.setHours(resetHour, 0, 0, 0)
 
-  // Akhir business day hari ini: tanggal sekarang pada jam reset + 24 jam (kurangi 1ms)
-  const to = new Date(from.getTime() + 24 * 60 * 60 * 1000 - 1)
+  // Jika sekarang sebelum jam reset, business day aktif dimulai kemarin
+  if (now < from) {
+    from.setDate(from.getDate() - 1)
+  }
+
+  // Batas atas eksklusif: awal business day berikutnya
+  const to = new Date(from.getTime() + ONE_DAY_MS)
 
   return {
     from: from.toISOString(),
@@ -50,7 +55,7 @@ export function getBusinessDayBounds(resetHour: number): { from: string; to: str
 export function getBusinessDayBoundsForDate(dateStr: string, resetHour: number): { from: string; to: string } {
   const [year, month, day] = dateStr.split('-').map(Number)
   const from = new Date(year, month - 1, day, resetHour, 0, 0, 0)
-  const to = new Date(from.getTime() + 24 * 60 * 60 * 1000 - 1)
+  const to = new Date(from.getTime() + ONE_DAY_MS)
 
   return {
     from: from.toISOString(),
@@ -66,12 +71,15 @@ export function getBusinessDayBoundsForDate(dateStr: string, resetHour: number):
  * @param resetHour - Jam reset (0-23)
  * @returns Array string tanggal (YYYY-MM-DD) dari lama ke baru
  */
-export function getBusinessDayLabels(days: number, _resetHour?: number): string[] {
+export function getBusinessDayLabels(days: number, resetHour = 0): string[] {
+  if (days <= 0) return []
+
   const labels: string[] = []
-  const now = new Date()
+  const todayBounds = getBusinessDayBounds(resetHour)
+  const todayBusinessStart = new Date(todayBounds.from)
 
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now)
+    const d = new Date(todayBusinessStart)
     d.setDate(d.getDate() - i)
     // Label adalah tanggal kalender di mana business day dimulai
     const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -113,7 +121,7 @@ export function getBusinessDayFilter(resetHour: number): { gte: string; lt: stri
   const bounds = getBusinessDayBounds(resetHour)
   return {
     gte: bounds.from,
-    lt: new Date(new Date(bounds.to).getTime() + 1).toISOString(), // +1ms agar inklusif
+    lt: bounds.to,
   }
 }
 
