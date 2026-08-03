@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, LogIn, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { checkInShift, getActiveShift, autoHandover, getAllActiveShifts, fetchShiftHistory } from '@/services/shiftService'
+import { checkInShift, getActiveShift, autoHandover, getAllActiveShifts, fetchShiftHistory, closeShift } from '@/services/shiftService'
 import { fetchBranches } from '@/services/branchService'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Input'
@@ -90,19 +90,26 @@ export default function ShiftPage() {
   const handoverMutation = useMutation({
     mutationFn: () => {
       if (!activeShift || !user) throw new Error('Tidak ada shift aktif')
+      
+      // Jika manager/developer dan tidak pilih pengganti, tutup shift langsung
+      if ((user.role === 'manager' || user.role === 'developer') && !replaceUserId) {
+        return closeShift(activeShift.id)
+      }
+
       if (!replaceUserId) throw new Error('Pilih staf pengganti')
+      
       return autoHandover({
         fromShiftId: activeShift.id,
         fromUserId: user.id,
         toUserId: replaceUserId,
-        branchId,
+        branchId: activeShift.branch_id, // Gunakan branch dari shift aktif
         systemCash: activeShift.system_cash || 0,
         actualCash: activeShift.system_cash || 0,
         notes: '',
       })
     },
     onSuccess: () => {
-      toast.success('Shift berhasil diserahkan, tanggung jawab berpindah!')
+      toast.success('Shift berhasil diakhiri!')
       qc.invalidateQueries({ queryKey: ['active-shift'] })
       qc.invalidateQueries({ queryKey: ['all-active-shifts'] })
       setHandoverModal(false)
@@ -212,7 +219,12 @@ export default function ShiftPage() {
       <Modal isOpen={handoverModal} onClose={() => setHandoverModal(false)} title="Pilih Pengganti" size="sm"
         footer={<React.Fragment>
           <Button variant="secondary" onClick={() => { setHandoverModal(false); setReplaceUserId('') }}>Batal</Button>
-          <Button variant="danger" loading={handoverMutation.isPending} onClick={() => handoverMutation.mutate()}>
+          <Button 
+            variant="danger" 
+            loading={handoverMutation.isPending} 
+            onClick={() => handoverMutation.mutate()}
+            disabled={user?.role === 'staff' && !replaceUserId}
+          >
             Ya, Pulang
           </Button>
         </React.Fragment>}>
@@ -227,12 +239,17 @@ export default function ShiftPage() {
               value={replaceUserId}
               onChange={e => setReplaceUserId(e.target.value)}
               options={otherActiveUsers.map(s => ({ value: s.user_id, label: (s.user as {name:string})?.name ?? s.user_id }))}
-              placeholder="Pilih pengganti"
+              placeholder={user?.role === 'staff' ? "Pilih pengganti" : "Pilih pengganti (opsional)"}
             />
-          ) : (
+          ) : user?.role === 'staff' ? (
             <div className="p-4 rounded-xl border-2 border-dashed border-red-200 bg-red-50 text-red-600 text-sm">
               <p className="font-bold mb-1">Tidak bisa Pulang</p>
               <p>Staf pengganti harus melakukan <strong>MASUK</strong> terlebih dahulu sebelum Anda bisa Pulang.</p>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 text-blue-600 text-sm">
+              <p className="font-bold mb-1">Info</p>
+              <p>Anda dapat pulang tanpa pengganti karena login sebagai <strong>{user?.role}</strong>.</p>
             </div>
           )}
         </div>

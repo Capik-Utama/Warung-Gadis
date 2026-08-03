@@ -18,6 +18,12 @@ export async function checkInShift(userId: string, branchId: string, skipOperati
     }
   }
 
+  // Prevent multiple active shifts
+  const active = await getActiveShift(userId)
+  if (active) {
+    throw new Error('Anda sudah memiliki shift aktif. Silakan pulang terlebih dahulu.')
+  }
+
   const { data, error } = await supabase
     .from('shifts')
     .insert({
@@ -34,13 +40,28 @@ export async function checkInShift(userId: string, branchId: string, skipOperati
 }
 
 export async function getActiveShift(userId: string): Promise<Shift | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('shifts')
     .select('*, user:users(id,name), branch:branches(id,name,is_operational)')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .maybeSingle()
-  return data as Shift | null
+    .order('created_at', { ascending: false })
+    .limit(1)
+  
+  if (error) return null
+  return data && data.length > 0 ? (data[0] as Shift) : null
+}
+
+export async function closeShift(shiftId: string): Promise<void> {
+  const { error } = await supabase
+    .from('shifts')
+    .update({ 
+      status: 'closed', 
+      check_out: new Date().toISOString() 
+    })
+    .eq('id', shiftId)
+  
+  if (error) throw error
 }
 
 export async function getAllActiveShifts(branchId: string): Promise<Shift[]> {
