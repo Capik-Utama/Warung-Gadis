@@ -41,7 +41,11 @@ export default function LoginPage() {
         setAllowedBranchIds([])
       }
       toast.success(`Selamat datang, ${user.name}!`)
-      navigate('/select-branch')
+      if (user.role === 'staff') {
+        navigate('/select-branch')
+      } else {
+        navigate('/')
+      }
     } catch {
       toast.error('Nama atau password salah')
     } finally {

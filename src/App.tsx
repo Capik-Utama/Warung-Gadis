@@ -39,10 +39,17 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RequireBranch({ children }: { children: React.ReactNode }) {
   const { user, selectedBranch } = useAuthStore()
-  // Developer and manager don't necessarily NEED to select a branch immediately, 
-  // but for consistency we can enforce it if that's the requirement.
-  // The user said "staf harus memilih cabang", so let's enforce it for everyone for better UX.
-  if (user && !selectedBranch) return <Navigate to="/select-branch" replace />
+  
+  // Developer and manager don't need to select a branch immediately
+  if (user?.role === 'developer' || user?.role === 'manager') {
+    return <>{children}</>
+  }
+
+  // Staff MUST select a branch before accessing other pages
+  if (user?.role === 'staff' && !selectedBranch) {
+    return <Navigate to="/select-branch" replace />
+  }
+
   return <>{children}</>
 }
 
