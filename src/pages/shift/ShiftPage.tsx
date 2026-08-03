@@ -59,10 +59,11 @@ export default function ShiftPage() {
   }, [branchId, checkInBranchId])
 
   useEffect(() => {
-    if (!selectedBranch && activeShift?.branch && branches.length > 0) {
-      const fullBranch = branches.find(b => b.id === activeShift.branch.id)
+    const activeBranch = activeShift?.branch
+    if (!selectedBranch && activeBranch && branches.length > 0) {
+      const fullBranch = branches.find(b => b.id === activeBranch.id)
       if (fullBranch) setSelectedBranch(fullBranch)
-      else setSelectedBranch(activeShift.branch) // Fallback
+      else setSelectedBranch(activeBranch) // Fallback
     }
   }, [selectedBranch, activeShift, branches, setSelectedBranch])
 
