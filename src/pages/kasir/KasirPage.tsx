@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
 import { fetchProducts } from '@/services/productService'
 import { fetchCategories } from '@/services/categoryService'
+import { fetchBranches } from '@/services/branchService'
 import {
   createTransaction,
   fetchPendingTransactions,
@@ -22,7 +23,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { formatCurrency } from '@/utils/format'
-import type { Product, PaymentMethod, TransactionItem } from '@/types'
+import type { Branch, Product, PaymentMethod, TransactionItem } from '@/types'
 
 const STORAGE_KEY = 'wg-favorites'
 
@@ -43,11 +44,9 @@ function useFavorites(userId: string) {
 
 export default function KasirPage() {
   const navigate = useNavigate()
-  const { user, selectedBranch, hasPermission } = useAuthStore()
+  const { user, selectedBranch, hasPermission, allowedBranchIds, setSelectedBranch } = useAuthStore()
 
-  // Developer & Manager harus pilih cabang untuk transaksi
   const isDeveloperOrManager = user?.role === 'developer' || user?.role === 'manager'
-  const requiresBranch = isDeveloperOrManager && !selectedBranch
   const canAccessKasir = hasPermission('access_kasir')
   const cart = useCartStore()
   const qc = useQueryClient()
@@ -87,6 +86,21 @@ export default function KasirPage() {
     queryKey: ['debt-members'],
     queryFn: fetchDebtMembers,
   })
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches'],
+    queryFn: fetchBranches,
+  })
+
+  const availableBranches = useMemo(() => {
+    if (!user) return []
+    if (isDeveloperOrManager) {
+      return branches.filter((branch) => branch.is_active)
+    }
+    return branches.filter((branch) => branch.is_active && allowedBranchIds.includes(branch.id))
+  }, [allowedBranchIds, branches, isDeveloperOrManager, user])
+
+  const selectedBranchLabel = selectedBranch?.name ?? 'Belum dipilih'
 
   // Filter members based on debtName input
   const filteredMembers = debtMembers.filter(name =>
@@ -326,23 +340,49 @@ export default function KasirPage() {
     )
   }
 
-  if (requiresBranch) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-          <GitBranch size={32} className="text-blue-500" />
-        </div>
-        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Pilih Cabang</h2>
-        <p style={{ color: 'var(--text-secondary)' }} className="mb-6">Silakan pilih cabang terlebih dahulu sebelum melakukan transaksi.</p>
-        <Button variant="primary" onClick={() => navigate('/select-branch')}>
-          Pilih Cabang
-        </Button>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-3 h-full">
+      {isDeveloperOrManager && (
+        <div className="card p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <GitBranch size={16} />
+                Cabang Transaksi
+              </p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                Pilih cabang hanya saat ingin transaksi. Jika belum dipilih, data pending tampil untuk semua cabang.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {availableBranches.map((branch: Branch) => {
+                const isSelected = selectedBranch?.id === branch.id
+                return (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    onClick={() => setSelectedBranch(isSelected ? null : branch)}
+                    className="px-3 py-2 rounded-xl border text-sm font-medium transition-colors"
+                    style={{
+                      borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-color)',
+                      background: isSelected ? 'rgba(37,99,235,0.08)' : 'var(--bg-card)',
+                      color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)',
+                      opacity: branch.is_operational ? 1 : 0.65,
+                    }}
+                  >
+                    <span>{branch.name}</span>
+                    {!branch.is_operational && <span className="ml-2 text-[10px] font-semibold">TUTUP</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+            Cabang aktif: {selectedBranchLabel}
+          </p>
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="flex gap-2">
         <Input
@@ -361,12 +401,14 @@ export default function KasirPage() {
               <p className="font-semibold text-amber-700">Read Only</p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                 {!branchId
-                  ? 'Anda melihat data semua cabang. Masuk shift dan pilih cabang untuk bertransaksi.'
+                  ? 'Anda melihat data semua cabang. Pilih cabang terlebih dahulu untuk bertransaksi.'
                   : 'Belum masuk shift. Aksi transaksi dikunci sampai masuk shift.'
                 }
               </p>
             </div>
-            <Button variant="warning" onClick={goToShiftPage}>Masuk Shift</Button>
+            {!(!branchId && isDeveloperOrManager) && (
+              <Button variant="warning" onClick={goToShiftPage}>Masuk Shift</Button>
+            )}
           </div>
         </div>
       )}
