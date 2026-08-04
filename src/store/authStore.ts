@@ -3,15 +3,19 @@ import { persist } from 'zustand/middleware'
 import type { User, Branch, PermissionKey, UserRole } from '@/types'
 import { ROLE_DEFAULT_PERMISSIONS } from '@/permissions'
 
+type LoginMode = 'default' | 'manager' | 'staff'
+
 interface AuthStore {
   user: User | null
   selectedBranch: Branch | null
   permissions: PermissionKey[]
   allowedBranchIds: string[]
+  loginMode: LoginMode
   setUser: (user: User | null) => void
   setSelectedBranch: (branch: Branch | null) => void
   setPermissions: (perms: PermissionKey[]) => void
   setAllowedBranchIds: (ids: string[]) => void
+  setLoginMode: (mode: LoginMode) => void
   logout: () => void
   hasPermission: (key: PermissionKey) => boolean
   isDeveloper: () => boolean
@@ -27,36 +31,44 @@ export const useAuthStore = create<AuthStore>()(
       selectedBranch: null,
       permissions: [],
       allowedBranchIds: [],
+      loginMode: 'default',
 
       setUser: (user) => set({ user }),
       setSelectedBranch: (branch) => set({ selectedBranch: branch }),
       setPermissions: (permissions) => set({ permissions }),
       setAllowedBranchIds: (allowedBranchIds) => set({ allowedBranchIds }),
+      setLoginMode: (loginMode) => set({ loginMode }),
 
       logout: () =>
-        set({ user: null, selectedBranch: null, permissions: [], allowedBranchIds: [] }),
+        set({ user: null, selectedBranch: null, permissions: [], allowedBranchIds: [], loginMode: 'default' }),
 
       hasPermission: (key) => {
-        const { user, permissions } = get()
+        const { user, permissions, loginMode } = get()
         if (!user) return false
-        if (user.role === 'developer' || user.role === 'manager') return true
-        
-        // Check custom permissions first, then fallback to defaults for the role
+        if (user.role === 'developer') return true
+        if (user.role === 'manager' && loginMode !== 'staff') return true
+
         if (permissions.includes(key)) return true
-        const defaults = ROLE_DEFAULT_PERMISSIONS[user.role as UserRole] || []
+        const effectiveRole: UserRole = user.role === 'manager' && loginMode === 'staff' ? 'staff' : user.role
+        const defaults = ROLE_DEFAULT_PERMISSIONS[effectiveRole] || []
         return defaults.includes(key)
       },
 
       isDeveloper: () => get().user?.role === 'developer',
-      isManager: () => get().user?.role === 'manager',
-      isStaff: () => get().user?.role === 'staff',
+      isManager: () => {
+        const { user, loginMode } = get()
+        return user?.role === 'manager' && loginMode !== 'staff'
+      },
+      isStaff: () => {
+        const { user, loginMode } = get()
+        return user?.role === 'staff' || (user?.role === 'manager' && loginMode === 'staff')
+      },
 
       isBranchAllowed: (branchId: string) => {
-        const { user, allowedBranchIds } = get()
+        const { user, allowedBranchIds, loginMode } = get()
         if (!user) return false
-        // Developer & manager can access all branches
-        if (user.role === 'developer' || user.role === 'manager') return true
-        // Staff can only access branches in their allowed list
+        if (user.role === 'developer') return true
+        if (user.role === 'manager' && loginMode !== 'staff') return true
         return allowedBranchIds.includes(branchId)
       },
     }),
@@ -67,6 +79,7 @@ export const useAuthStore = create<AuthStore>()(
         selectedBranch: state.selectedBranch,
         permissions: state.permissions,
         allowedBranchIds: state.allowedBranchIds,
+        loginMode: state.loginMode,
       }),
     },
   ),

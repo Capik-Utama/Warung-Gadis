@@ -22,7 +22,7 @@ interface TopbarProps {
 export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const { user, selectedBranch, allowedBranchIds, logout, setSelectedBranch } = useAuthStore()
+  const { user, selectedBranch, allowedBranchIds, logout, setSelectedBranch, isStaff, isManager } = useAuthStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [showOpenModal, setShowOpenModal] = useState(false)
@@ -32,7 +32,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const [branches, setBranches] = useState<Branch[]>([])
   const [_branchesLoading, setBranchesLoading] = useState(false)
   const [loading, setLoading] = useState(false)
-  const isStaff = user?.role === 'staff'
+  const staffMode = isStaff()
 
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
@@ -56,7 +56,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     return fresh || selectedBranch
   }, [selectedBranch, freshBranches])
 
-  const isStaffReadOnly = isStaff && !activeShift
+  const isStaffReadOnly = staffMode && !activeShift
 
   // Load branches when modal opens
   const loadBranches = async () => {
@@ -185,9 +185,9 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
   const allowedBranches = useMemo(() => {
     if (!user) return []
     const source = freshBranches && freshBranches.length > 0 ? freshBranches : branches
-    if (user.role === 'developer' || user.role === 'manager') return source
+    if (user.role === 'developer' || isManager()) return source
     return source.filter(b => allowedBranchIds.includes(b.id))
-  }, [branches, freshBranches, user, allowedBranchIds])
+  }, [branches, freshBranches, user, allowedBranchIds, isManager])
   
   // For open-warung modal, only show branches that can be opened (currently closed but active)
   const openableBranches = allowedBranches.filter(b => !b.is_operational)

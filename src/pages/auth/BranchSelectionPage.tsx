@@ -13,7 +13,7 @@ export default function BranchSelectionPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const returnTo: string = (location.state as any)?.returnTo ?? '/'
-  const { user, allowedBranchIds, setSelectedBranch, logout } = useAuthStore()
+  const { user, allowedBranchIds, setSelectedBranch, logout, isManager } = useAuthStore()
 
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ['branches'],
@@ -22,13 +22,13 @@ export default function BranchSelectionPage() {
 
   const filteredBranches = useMemo(() => {
     if (!user) return []
-    if (user.role === 'developer' || user.role === 'manager') {
+    if (user.role === 'developer' || isManager()) {
       // Developer & manager can see all active branches
       return branches.filter((b) => b.is_active)
     }
     // Staff can only see branches they have access to AND that are active
     return branches.filter((b) => allowedBranchIds.includes(b.id) && b.is_active)
-  }, [branches, user, allowedBranchIds])
+  }, [branches, user, allowedBranchIds, isManager])
 
   const handleSelect = (branch: Branch) => {
     if (!branch.is_operational) {

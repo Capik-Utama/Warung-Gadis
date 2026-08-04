@@ -43,10 +43,11 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
-  const { user, logout, hasPermission } = useAuthStore()
+  const { user, logout, hasPermission, isStaff, isManager } = useAuthStore()
   const navigate = useNavigate()
 
-  const roleAllowedKeys = ROLE_MENUS[user?.role ?? 'staff'] ?? []
+  const effectiveRole = user?.role === 'manager' && isStaff() ? 'staff' : user?.role === 'manager' && isManager() ? 'manager' : user?.role ?? 'staff'
+  const roleAllowedKeys = ROLE_MENUS[effectiveRole] ?? []
   const navItems = ALL_NAV_ITEMS.filter((item) => {
     // Check if allowed by role
     if (roleAllowedKeys.includes(item.key)) return true

@@ -14,7 +14,7 @@ export async function ensurePermission(key: PermissionKey): Promise<void> {
 }
 
 export async function ensureStaffWriteAccess(permissionKey?: PermissionKey): Promise<void> {
-  const { user, selectedBranch } = useAuthStore.getState()
+  const { user, selectedBranch, isStaff } = useAuthStore.getState()
 
   if (!user) {
     throw new Error('Session tidak valid')
@@ -39,7 +39,7 @@ export async function ensureStaffWriteAccess(permissionKey?: PermissionKey): Pro
   }
 
   // Developer and Manager don't need active shift to perform write operations
-  if (user.role === 'staff') {
+  if (isStaff()) {
     const { data: activeShift, error } = await supabase
       .from('shifts')
       .select('id, branch_id')
