@@ -231,7 +231,7 @@ export default function KasirPage() {
         error: (e: Error) => e.message,
       },
     )
-  }, [isReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc, cart])
+  }, [isReadOnly, goToShiftPage, checkedCount, checkedItems, user, branchId, refetchPending, qc, cart, setSelectedBranch])
 
   // BAYAR
   const payMutation = useMutation({
