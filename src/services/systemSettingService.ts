@@ -24,12 +24,12 @@ export async function getResetHour(): Promise<number> {
     .single()
 
   if (error) {
-    // Jika tabel belum ada atau belum ada data, gunakan default
-    if (error.code === '42P01' || error.code === 'PGRST116') {
-      return DEFAULT_RESET_HOUR
+    // Jika gagal (tabel belum ada atau error lain), coba ambil dari localStorage
+    const fallback = getResetHourFallback()
+    if (error.code !== 'PGRST116') { // PGRST116 cuma berarti data kosong, bukan error sistem
+      console.warn('[systemSettingService] Gagal mengambil dari database, menggunakan fallback:', error)
     }
-    console.error('[systemSettingService] Error fetching reset_hour:', error)
-    return DEFAULT_RESET_HOUR
+    return fallback
   }
 
   const hour = parseInt(data.setting_value, 10)
@@ -58,13 +58,13 @@ export async function setResetHour(hour: number): Promise<void> {
 
 
   if (error) {
-    // Jika tabel belum ada, simpan di localStorage sebagai fallback
-    if (error.code === '42P01') {
-      console.warn('[systemSettingService] Tabel system_settings belum ada, menggunakan localStorage fallback')
-      localStorage.setItem('warung_gadis_reset_hour', String(hour))
-      return
-    }
-    throw error
+    // Simpan di localStorage sebagai fallback untuk semua jenis error (tabel hilang, RLS, dll)
+    // agar user tetap bisa menggunakan aplikasi meskipun database bermasalah
+    console.warn('[systemSettingService] Gagal menyimpan ke database, menggunakan localStorage fallback:', error)
+    localStorage.setItem('warung_gadis_reset_hour', String(hour))
+    
+    // Kita tidak melempar error di sini agar UI menganggapnya berhasil (karena sudah tersimpan di lokal)
+    return
   }
 }
 

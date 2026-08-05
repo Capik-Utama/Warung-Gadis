@@ -152,6 +152,15 @@ supabase/migrations/004_remove_supplier_sku_modal.sql
 
 -- 6. Fitur Akses Cabang User (PENTING: Perbaikan Error user_branches)
 supabase/migrations/005_add_user_branches.sql
+
+-- 7. RPC Transaksi (PENTING: Untuk fitur kasir)
+supabase/migrations/006_create_transaction_rpc.sql
+
+-- 8. Stok per Cabang
+supabase/migrations/007_stock_per_branch.sql
+
+-- 9. Pengaturan Sistem (Jam Reset Pendapatan)
+supabase/migrations/008_system_settings.sql
 ```
 
 ### 4. Jalankan Development Server
