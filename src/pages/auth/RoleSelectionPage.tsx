@@ -14,7 +14,7 @@ export default function RoleSelectionPage() {
   }
 
   const handleSelectStaff = () => {
-    navigate('/select-branch')
+    navigate('/select-branch', { state: { returnTo: '/kasir' } })
   }
 
   const handleLogout = () => {
