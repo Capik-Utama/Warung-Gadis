@@ -43,6 +43,8 @@ export default function LoginPage() {
       toast.success(`Selamat datang, ${user.name}!`)
       if (user.role === 'staff') {
         navigate('/select-branch')
+      } else if (user.role === 'manager' || user.role === 'developer') {
+        navigate('/select-role')
       } else {
         navigate('/')
       }

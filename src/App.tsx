@@ -9,6 +9,7 @@ import { MainLayout } from '@/components/layout/MainLayout'
 
 import LoginPage from '@/pages/auth/LoginPage'
 import BranchSelectionPage from '@/pages/auth/BranchSelectionPage'
+import RoleSelectionPage from '@/pages/auth/RoleSelectionPage'
 import SetupDatabase from '@/pages/SetupDatabase'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import KasirPage from '@/pages/kasir/KasirPage'
@@ -53,6 +54,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/select-branch" element={<RequireAuth><BranchSelectionPage /></RequireAuth>} />
+          <Route path="/select-role" element={<RequireAuth><RoleSelectionPage /></RequireAuth>} />
           <Route path="/setup-database" element={<SetupDatabase />} />
           <Route path="/" element={<RequireAuth><MainLayout /></RequireAuth>}>
             <Route index element={<DashboardPage />} />
