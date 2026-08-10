@@ -19,7 +19,7 @@ export function statusBadge(status: string) {
 export function roleBadge(role: string) {
   const map: Record<string, { label: string; variant: 'blue' | 'purple' | 'green' }> = {
     owner: { label: 'Owner', variant: 'blue' },
-    manager: { label: 'Manager', variant: 'purple' },
+    manager: { label: 'Manager', variant: 'green' },
     staff: { label: 'Staff', variant: 'green' },
   }
   const config = map[role] ?? { label: role, variant: 'blue' as const }
