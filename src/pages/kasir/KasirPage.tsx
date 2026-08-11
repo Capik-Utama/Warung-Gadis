@@ -613,7 +613,7 @@ export default function KasirPage() {
               MEMBER
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               className="text-xs py-2"
               onClick={isReadOnly ? goToShiftPage : () => setPayModal(true)}
               disabled={isReadOnly || checkedCount === 0}
@@ -1117,7 +1117,7 @@ function PendingView({
               MEMBER
             </Button>
             <Button
-              variant="secondary"
+              variant="success"
               className="text-xs py-2"
               onClick={() => handlePayPending('qris')}
             >
@@ -1125,7 +1125,7 @@ function PendingView({
               Bayar QRIS
             </Button>
             <Button
-              variant="secondary"
+              variant="success"
               className="text-xs py-2"
               onClick={() => handlePayPending('transfer')}
             >
