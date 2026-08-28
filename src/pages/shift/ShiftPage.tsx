@@ -27,16 +27,22 @@ export default function ShiftPage() {
     refetchInterval: 30_000,
   })
 
-  const { data: allActive = [] } = useQuery({
-    queryKey: ['all-active-shifts', branchId],
-    queryFn: () => getAllActiveShifts(branchId),
-    enabled: !!branchId,
+  // Untuk serah-terima, gunakan cabang dari shift aktif sebagai sumber kebenaran.
+  // selectedBranch dapat masih menyimpan pilihan cabang lama dari sesi sebelumnya.
+  const activeBranchId = activeShift?.branch_id ?? branchId
+
+  const { data: allActive = [], refetch: refetchActiveShifts } = useQuery({
+    queryKey: ['all-active-shifts', activeBranchId],
+    queryFn: () => getAllActiveShifts(activeBranchId),
+    enabled: !!activeBranchId,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   })
 
   const { data: history = [] } = useQuery({
-    queryKey: ['shift-history', branchId],
-    queryFn: () => fetchShiftHistory(branchId),
-    enabled: !!branchId,
+    queryKey: ['shift-history', activeBranchId],
+    queryFn: () => fetchShiftHistory(activeBranchId),
+    enabled: !!activeBranchId,
   })
 
   const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: fetchBranches })
@@ -150,7 +156,11 @@ export default function ShiftPage() {
               <div className="flex gap-2 mt-4">
                 <Button
                   variant="warning"
-                  onClick={() => setHandoverModal(true)}
+                  onClick={async () => {
+                    // Ambil data terbaru saat popup dibuka agar rekan yang baru MASUK langsung muncul.
+                    await refetchActiveShifts()
+                    setHandoverModal(true)
+                  }}
                   icon={<LogOut size={16} />}
                   className="w-full"
                 >
