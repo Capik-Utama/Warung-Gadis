@@ -27,14 +27,14 @@ export default function ShiftPage() {
     refetchInterval: 30_000,
   })
 
-  // Untuk serah-terima, gunakan cabang dari shift aktif sebagai sumber kebenaran.
-  // selectedBranch dapat masih menyimpan pilihan cabang lama dari sesi sebelumnya.
+  // Gunakan daftar global shift aktif agar kandidat tidak hilang karena
+  // selectedBranch/session lama tidak sama dengan cabang pada record shift.
   const activeBranchId = activeShift?.branch_id ?? branchId
 
   const { data: allActive = [], refetch: refetchActiveShifts } = useQuery({
-    queryKey: ['all-active-shifts', activeBranchId],
-    queryFn: () => getAllActiveShifts(activeBranchId),
-    enabled: !!activeBranchId,
+    queryKey: ['all-active-shifts'],
+    queryFn: () => getAllActiveShifts(),
+    enabled: !!user,
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   })
@@ -75,7 +75,7 @@ export default function ShiftPage() {
 
   // Hanya staf non-developer yang boleh tampil sebagai staf aktif/pengganti.
   // Akun developer tetap tersembunyi dari seluruh daftar shift.
-  const visibleActiveShifts = allActive.filter(s => s.user?.role !== 'developer')
+  const visibleActiveShifts = allActive.filter(s => s.user?.role === 'staff')
   const otherActiveUsers = visibleActiveShifts.filter(s => s.user_id !== user?.id)
   const visibleHistory = history.filter(s => s.user?.role !== 'developer')
 

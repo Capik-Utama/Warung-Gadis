@@ -64,11 +64,13 @@ export async function closeShift(shiftId: string): Promise<void> {
   if (error) throw error
 }
 
-export async function getAllActiveShifts(branchId: string): Promise<Shift[]> {
+export async function getAllActiveShifts(): Promise<Shift[]> {
+  // Ambil semua shift aktif terlebih dahulu. Penyaringan kandidat non-developer
+  // dilakukan di halaman shift agar perbedaan cabang tersimpan/session lama tidak
+  // membuat daftar pengganti kosong.
   const { data, error } = await supabase
     .from('shifts')
-    .select('*, user:users(id,name,role)')
-    .eq('branch_id', branchId)
+    .select('*, user:users(id,name,role), branch:branches(id,name)')
     .eq('status', 'active')
     .order('created_at')
   if (error) throw error
