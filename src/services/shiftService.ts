@@ -42,7 +42,7 @@ export async function checkInShift(userId: string, branchId: string, skipOperati
 export async function getActiveShift(userId: string): Promise<Shift | null> {
   const { data, error } = await supabase
     .from('shifts')
-    .select('*, user:users(id,name), branch:branches(id,name,is_operational)')
+    .select('*, user:users(id,name,role), branch:branches(id,name,is_operational)')
     .eq('user_id', userId)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -67,7 +67,7 @@ export async function closeShift(shiftId: string): Promise<void> {
 export async function getAllActiveShifts(branchId: string): Promise<Shift[]> {
   const { data, error } = await supabase
     .from('shifts')
-    .select('*, user:users(id,name)')
+    .select('*, user:users(id,name,role)')
     .eq('branch_id', branchId)
     .eq('status', 'active')
     .order('created_at')
@@ -139,7 +139,7 @@ export async function getPendingHandover(toUserId: string): Promise<ShiftHandove
 export async function fetchShiftHistory(branchId: string): Promise<Shift[]> {
   const { data, error } = await supabase
     .from('shifts')
-    .select('*, user:users(id,name)')
+    .select('*, user:users(id,name,role)')
     .eq('branch_id', branchId)
     .order('created_at', { ascending: false })
     .limit(50)

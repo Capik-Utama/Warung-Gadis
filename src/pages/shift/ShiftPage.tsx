@@ -67,8 +67,11 @@ export default function ShiftPage() {
     }
   }, [selectedBranch, activeShift, branches, setSelectedBranch])
 
-  // Staf lain yang sedang aktif di cabang yang sama
-  const otherActiveUsers = allActive.filter(s => s.user_id !== user?.id)
+  // Hanya staf non-developer yang boleh tampil sebagai staf aktif/pengganti.
+  // Akun developer tetap tersembunyi dari seluruh daftar shift.
+  const visibleActiveShifts = allActive.filter(s => s.user?.role !== 'developer')
+  const otherActiveUsers = visibleActiveShifts.filter(s => s.user_id !== user?.id)
+  const visibleHistory = history.filter(s => s.user?.role !== 'developer')
 
   const checkInMutation = useMutation({
     mutationFn: () => {
@@ -208,10 +211,10 @@ export default function ShiftPage() {
       <div className="card p-5">
         <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Riwayat Shift</h3>
         <div className="space-y-2">
-          {history.length === 0 ? (
+          {visibleHistory.length === 0 ? (
             <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Belum ada riwayat</p>
           ) : (
-            history.slice(0, 10).map((s: Shift) => (
+            visibleHistory.slice(0, 10).map((s: Shift) => (
               <div key={s.id} className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
                 <div>
                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{(s.user as {name: string})?.name}</p>
