@@ -373,3 +373,166 @@ export async function getTodayStaffStats(branchId: string, userId: string) {
     transactionCount: (trxData ?? []).length + (payData ?? []).length,
   }
 }
+
+
+import type { DetailedReportResult, DetailedReportRow, ReportShiftOption } from '@/types/report'
+
+export interface DetailedReportFilters {
+  from: string
+  to: string
+  branchId?: string
+  staffId?: string
+  shiftId?: string
+}
+
+type ShiftLookup = {
+  id: string
+  user_id: string
+  branch_id: string
+  number?: number
+  check_in: string
+  check_out: string | null
+  user?: { id: string; name: string } | { id: string; name: string }[]
+  branch?: { id: string; name: string } | { id: string; name: string }[]
+}
+
+function relationOne<T>(relation: T | T[] | null | undefined): T | null {
+  return Array.isArray(relation) ? relation[0] ?? null : relation ?? null
+}
+
+function shiftForTimestamp(shifts: ShiftLookup[], userId: string, branchId: string, timestamp: string) {
+  const time = new Date(timestamp).getTime()
+  return shifts.find((shift) => {
+    if (shift.user_id !== userId || shift.branch_id !== branchId) return false
+    const start = new Date(shift.check_in).getTime()
+    const end = shift.check_out ? new Date(shift.check_out).getTime() : Number.POSITIVE_INFINITY
+    return time >= start && time <= end
+  }) ?? null
+}
+
+export async function getReportShifts(filters: Pick<DetailedReportFilters, 'from' | 'to' | 'branchId' | 'staffId'>): Promise<ReportShiftOption[]> {
+  let query = supabase
+    .from('shifts')
+    .select('id,user_id,branch_id,check_in,check_out,user:users(id,name),branch:branches(id,name)')
+    .lte('check_in', filters.to)
+    .or(`check_out.is.null,check_out.gte.${filters.from}`)
+    .order('check_in', { ascending: true })
+    .limit(500)
+
+  if (filters.branchId) query = query.eq('branch_id', filters.branchId)
+  if (filters.staffId) query = query.eq('user_id', filters.staffId)
+
+  const { data, error } = await query
+  if (error) throw error
+
+  const counters = new Map<string, number>()
+  return ((data ?? []) as ShiftLookup[]).map((shift) => {
+    const user = relationOne(shift.user)
+    const branch = relationOne(shift.branch)
+    const key = `${shift.branch_id}:${shift.user_id}:${shift.check_in.slice(0, 10)}`
+    const number = (counters.get(key) ?? 0) + 1
+    counters.set(key, number)
+    return {
+      id: shift.id,
+      number,
+      staff_id: shift.user_id,
+      staff_name: user?.name ?? shift.user_id,
+      branch_id: shift.branch_id,
+      branch_name: branch?.name ?? shift.branch_id,
+      check_in: shift.check_in,
+      check_out: shift.check_out,
+    }
+  })
+}
+
+export async function getDetailedReport(filters: DetailedReportFilters): Promise<DetailedReportResult> {
+  let trxQuery = supabase
+    .from('transactions')
+    .select('id,code,user_id,branch_id,total_amount,payment_method,created_at,user:users(id,name),branch:branches(id,name)')
+    .eq('status', 'paid')
+    .gte('created_at', filters.from)
+    .lt('created_at', filters.to)
+    .order('created_at', { ascending: false })
+    .limit(1000)
+  if (filters.branchId) trxQuery = trxQuery.eq('branch_id', filters.branchId)
+  if (filters.staffId) trxQuery = trxQuery.eq('user_id', filters.staffId)
+
+  let payQuery = supabase
+    .from('debt_payments')
+    .select('id,code,user_id,branch_id,amount,created_at,user:users(id,name),branch:branches(id,name)')
+    .gte('created_at', filters.from)
+    .lt('created_at', filters.to)
+    .order('created_at', { ascending: false })
+    .limit(1000)
+  if (filters.branchId) payQuery = payQuery.eq('branch_id', filters.branchId)
+  if (filters.staffId) payQuery = payQuery.eq('user_id', filters.staffId)
+
+  const [{ data: sales, error: salesError }, { data: payments, error: paymentsError }] = await Promise.all([trxQuery, payQuery])
+  if (salesError) throw salesError
+  if (paymentsError) throw paymentsError
+
+  const shifts = await getReportShifts(filters)
+  const shiftLookups: ShiftLookup[] = shifts.map((shift) => ({
+    id: shift.id,
+    user_id: shift.staff_id,
+    branch_id: shift.branch_id,
+    number: shift.number,
+    check_in: shift.check_in,
+    check_out: shift.check_out,
+  }))
+  const rows: DetailedReportRow[] = []
+
+  for (const sale of (sales ?? []) as any[]) {
+    const shift = filters.shiftId ? shiftLookups.find((item) => item.id === filters.shiftId && item.user_id === sale.user_id && item.branch_id === sale.branch_id) : shiftForTimestamp(shiftLookups, sale.user_id, sale.branch_id, sale.created_at)
+    if (filters.shiftId && (!shift || !shiftForTimestamp([shift], sale.user_id, sale.branch_id, sale.created_at))) continue
+    const user = relationOne(sale.user)
+    const branch = relationOne(sale.branch)
+    rows.push({
+      id: sale.id,
+      kind: 'Penjualan',
+      date: sale.created_at,
+      code: sale.code,
+      amount: Number(sale.total_amount ?? 0),
+      staff_id: sale.user_id,
+      staff_name: user?.name ?? sale.user_id,
+      branch_id: sale.branch_id,
+      branch_name: branch?.name ?? sale.branch_id,
+      shift_id: shift?.id ?? null,
+      shift_number: shift?.number ?? null,
+      payment_method: sale.payment_method ?? '-',
+    })
+  }
+
+  for (const payment of (payments ?? []) as any[]) {
+    const shift = filters.shiftId ? shiftLookups.find((item) => item.id === filters.shiftId && item.user_id === payment.user_id && item.branch_id === payment.branch_id) : shiftForTimestamp(shiftLookups, payment.user_id, payment.branch_id, payment.created_at)
+    if (filters.shiftId && (!shift || !shiftForTimestamp([shift], payment.user_id, payment.branch_id, payment.created_at))) continue
+    const user = relationOne(payment.user)
+    const branch = relationOne(payment.branch)
+    rows.push({
+      id: payment.id,
+      kind: 'Pembayaran Member',
+      date: payment.created_at,
+      code: payment.code ?? '-',
+      amount: Number(payment.amount ?? 0),
+      staff_id: payment.user_id,
+      staff_name: user?.name ?? payment.user_id,
+      branch_id: payment.branch_id,
+      branch_name: branch?.name ?? payment.branch_id,
+      shift_id: shift?.id ?? null,
+      shift_number: shift?.number ?? null,
+      payment_method: 'Pembayaran member',
+    })
+  }
+
+  rows.sort((a, b) => b.date.localeCompare(a.date))
+  return {
+    rows,
+    summary: {
+      total: rows.reduce((sum, row) => sum + row.amount, 0),
+      transaction_count: rows.length,
+      staff_count: new Set(rows.map((row) => row.staff_id)).size,
+      branch_count: new Set(rows.map((row) => row.branch_id)).size,
+      shift_count: new Set(rows.map((row) => row.shift_id).filter(Boolean)).size,
+    },
+  }
+}
