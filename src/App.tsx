@@ -26,6 +26,7 @@ import SystemSettingsPage from '@/pages/pengaturan/SystemSettingsPage'
 import ThemePage from '@/pages/pengaturan/ThemePage'
 import BackupPage from '@/pages/backup/BackupPage'
 import FavoritPage from '@/pages/favorit/FavoritPage'
+import HistoryPage from '@/pages/history/HistoryPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -72,6 +73,7 @@ function App() {
             <Route path="pengaturan/sistem" element={<SystemSettingsPage />} />
             <Route path="theme" element={<ThemePage />} />
             <Route path="backup" element={<BackupPage />} />
+            <Route path="history" element={<HistoryPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

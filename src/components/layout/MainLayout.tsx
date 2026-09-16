@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/transaksi': 'Transaksi',
   '/member': 'Member',
   '/laporan': 'Laporan',
+  '/history': 'Log / History',
   '/favorit': 'Favorit',
   '/shift': 'Shift',
   '/user': 'Manajemen User',
