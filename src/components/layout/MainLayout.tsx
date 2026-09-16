@@ -68,13 +68,13 @@ export const MainLayout: React.FC = () => {
         />
 
         <main
-          className="flex-1 overflow-y-auto p-4 md:p-6 w-full"
+          className={`${pathname === '/kasir' ? 'overflow-hidden' : 'overflow-y-auto'} flex-1 p-4 md:p-6 w-full`}
           style={{ 
             background: 'var(--bg-primary)',
             WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
           }}
         >
-          <div className="max-w-7xl mx-auto animate-fade-in">
+          <div className={`${pathname === '/kasir' ? 'h-full' : ''} max-w-7xl mx-auto animate-fade-in`}>
             <Outlet />
           </div>
         </main>
