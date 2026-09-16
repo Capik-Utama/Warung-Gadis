@@ -401,48 +401,28 @@ function relationOne<T>(relation: T | T[] | null | undefined): T | null {
 }
 
 function shiftForTimestamp(shifts: ShiftLookup[], userId: string, branchId: string, timestamp: string) {
-  const time = new Date(timestamp).getTime()
-  return shifts.find((shift) => {
-    if (shift.user_id !== userId || shift.branch_id !== branchId) return false
-    const start = new Date(shift.check_in).getTime()
-    const end = shift.check_out ? new Date(shift.check_out).getTime() : Number.POSITIVE_INFINITY
-    return time >= start && time <= end
-  }) ?? null
+  const hour = Number(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    hour: 'numeric',
+    hour12: false,
+  }).format(new Date(timestamp)))
+  const number = hour >= 6 && hour < 18 ? 1 : 2
+  const template = shifts.find((shift) => shift.number === number)
+  return template ? { ...template, user_id: userId, branch_id: branchId } : null
 }
 
 export async function getReportShifts(filters: Pick<DetailedReportFilters, 'from' | 'to' | 'branchId' | 'staffId'>): Promise<ReportShiftOption[]> {
-  let query = supabase
-    .from('shifts')
-    .select('id,user_id,branch_id,check_in,check_out,user:users(id,name),branch:branches(id,name)')
-    .lte('check_in', filters.to)
-    .or(`check_out.is.null,check_out.gte.${filters.from}`)
-    .order('check_in', { ascending: true })
-    .limit(500)
-
-  if (filters.branchId) query = query.eq('branch_id', filters.branchId)
-  if (filters.staffId) query = query.eq('user_id', filters.staffId)
-
-  const { data, error } = await query
-  if (error) throw error
-
-  const counters = new Map<string, number>()
-  return ((data ?? []) as ShiftLookup[]).map((shift) => {
-    const user = relationOne(shift.user)
-    const branch = relationOne(shift.branch)
-    const key = `${shift.branch_id}:${shift.user_id}:${shift.check_in.slice(0, 10)}`
-    const number = (counters.get(key) ?? 0) + 1
-    counters.set(key, number)
-    return {
-      id: shift.id,
-      number,
-      staff_id: shift.user_id,
-      staff_name: user?.name ?? shift.user_id,
-      branch_id: shift.branch_id,
-      branch_name: branch?.name ?? shift.branch_id,
-      check_in: shift.check_in,
-      check_out: shift.check_out,
-    }
-  })
+  const now = new Date().toISOString()
+  return [1, 2].map((number) => ({
+    id: `shift-${number}`,
+    number,
+    staff_id: filters.staffId ?? '',
+    staff_name: filters.staffId ? 'Staf terpilih' : 'Semua staf',
+    branch_id: filters.branchId ?? '',
+    branch_name: filters.branchId ? 'Cabang terpilih' : 'Semua cabang',
+    check_in: now,
+    check_out: null,
+  }))
 }
 
 export async function getDetailedReport(filters: DetailedReportFilters): Promise<DetailedReportResult> {
