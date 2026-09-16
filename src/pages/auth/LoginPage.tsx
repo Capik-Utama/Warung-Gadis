@@ -64,7 +64,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-5">
-            <WGLogo size={140} className="shadow-2xl" style={{ filter: 'drop-shadow(0 8px 24px rgba(99,102,241,0.4))' }} />
+            <WGLogo size={180} className="shadow-2xl" style={{ filter: 'drop-shadow(0 8px 24px rgba(99,102,241,0.4))' }} />
           </div>
           <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Warung Gadis
