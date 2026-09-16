@@ -20,8 +20,10 @@ export default function HistoryPage() {
   const [category, setCategory] = useState('')
   const filters = useMemo(() => ({ from: isoStart(fromDate), to: isoEnd(toDate), category: category || undefined }), [fromDate, toDate, category])
   const { data: logs = [], isLoading, refetch } = useQuery({ queryKey: ['audit-logs', filters], queryFn: () => fetchAuditLogs(filters) })
+  const invalidRange = fromDate > toDate
 
   const downloadPdf = () => {
+    if (invalidRange) return
     const previousTitle = document.title
     document.title = `Riwayat Aktivitas ${fromDate} - ${toDate}`
     window.print()
@@ -32,7 +34,7 @@ export default function HistoryPage() {
     <div className="space-y-5 history-page">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div><h1 className="page-title flex items-center gap-2"><History size={24} /> Log / History</h1><p className="page-subtitle">Riwayat semua aktivitas aplikasi. Log otomatis disimpan maksimal 1 tahun.</p></div>
-        <div className="flex gap-2 no-print"><Button variant="secondary" size="sm" icon={<RefreshCw size={15} />} onClick={() => refetch()}>Refresh</Button><Button variant="primary" size="sm" icon={<Download size={15} />} onClick={downloadPdf}>Download PDF</Button></div>
+        <div className="flex gap-2 no-print"><Button variant="secondary" size="sm" icon={<RefreshCw size={15} />} onClick={() => refetch()}>Refresh</Button><Button variant="primary" size="sm" icon={<Download size={15} />} onClick={downloadPdf} disabled={invalidRange}>Download PDF</Button></div>
       </div>
 
       <div className="card p-4 no-print">
@@ -42,11 +44,13 @@ export default function HistoryPage() {
           <Input label="Sampai tanggal" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
           <label className="label">Kategori<select className="input mt-1" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Semua kategori</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         </div>
+        {invalidRange && <p className="text-xs mt-2" style={{ color: 'var(--danger)' }}>Tanggal mulai tidak boleh setelah tanggal akhir.</p>}
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>PDF dibuat melalui dialog cetak browser — pilih “Save as PDF”. Data lebih dari 1 tahun dihapus otomatis oleh Supabase.</p>
       </div>
 
       <div className="card p-4">
         <div className="flex items-center justify-between mb-3"><h3 className="font-semibold">{logs.length} aktivitas ditemukan</h3><span className="text-xs" style={{ color: 'var(--text-muted)' }}>{fromDate} s/d {toDate}</span></div>
-        {isLoading ? <p className="py-10 text-center text-sm">Memuat riwayat...</p> : logs.length === 0 ? <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Belum ada aktivitas pada periode ini.</p> : <div className="overflow-x-auto"><table className="table"><thead><tr><th>Waktu</th><th>Kategori</th><th>Aktivitas</th><th>Pelaku</th><th>Cabang</th><th>ID Referensi</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td className="whitespace-nowrap">{new Date(log.created_at).toLocaleString('id-ID')}</td><td><span className="badge badge-blue">{auditCategoryLabel(log.category)}</span></td><td className="font-medium">{log.description}</td><td>{log.actor_name ?? 'Sistem'}</td><td>{log.branch_id ?? '-'}</td><td className="text-xs">{log.entity_id ?? '-'}</td></tr>)}</tbody></table></div>}
+        {isLoading ? <p className="py-10 text-center text-sm">Memuat riwayat...</p> : logs.length === 0 ? <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Belum ada aktivitas pada periode ini.</p> : <div className="overflow-x-auto"><table className="table"><thead><tr><th>Waktu</th><th>Kategori</th><th>Aktivitas</th><th>Pelaku</th><th>Cabang</th><th>ID Referensi</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td className="whitespace-nowrap">{new Date(log.created_at).toLocaleString('id-ID')}</td><td><span className="badge badge-blue">{auditCategoryLabel(log.category)}</span></td><td className="font-medium">{log.description}</td><td>{log.actor_name ?? 'Sistem'}</td><td>{log.branch?.[0]?.name ?? log.branch_id ?? '-'}</td><td className="text-xs">{log.entity_id ?? '-'}</td></tr>)}</tbody></table></div>}
       </div>
 
       <style>{`@media print { .no-print, nav, aside, header { display: none !important; } .history-page { padding: 0 !important; } .card { box-shadow: none !important; border: 0 !important; } body { background: white !important; } }`}</style>

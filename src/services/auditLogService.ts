@@ -9,6 +9,7 @@ export interface AuditLog {
   actor_user_id: string | null
   actor_name: string | null
   branch_id: string | null
+  branch?: { name: string }[] | null
   description: string
   metadata: Record<string, unknown>
   created_at: string
@@ -23,7 +24,7 @@ export interface AuditLogFilters {
 export async function fetchAuditLogs(filters: AuditLogFilters): Promise<AuditLog[]> {
   let query = supabase
     .from('audit_logs')
-    .select('id,category,action,entity_type,entity_id,actor_user_id,actor_name,branch_id,description,metadata,created_at')
+    .select('id,category,action,entity_type,entity_id,actor_user_id,actor_name,branch_id,branch:branches(name),description,metadata,created_at')
     .gte('created_at', filters.from)
     .lt('created_at', filters.to)
     .order('created_at', { ascending: false })
