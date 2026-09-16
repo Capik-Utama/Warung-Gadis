@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
-  CreditCard, Banknote, QrCode, User, AlertCircle, Minus, Plus, Star, GitBranch,
+  CreditCard, Banknote, QrCode, User, Minus, Plus, Star, GitBranch,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -425,48 +425,42 @@ export default function KasirPage() {
         </div>
       </div>
 
-      {/* STICKY FOOTER: remains visible while products scroll */}
-      <div
-          className="flex-shrink-0 p-3 rounded-xl border flex flex-col gap-2"
+      {/* STICKY FOOTER: appears only after a product is checked */}
+      {checkedCount > 0 && (
+        <div
+          className="flex-shrink-0 p-2 rounded-xl border flex flex-col gap-1.5"
           style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {checkedCount} item dipilih
-              </span>
-              <p className="text-lg font-bold" style={{ color: 'var(--accent-primary)' }}>
-                {formatCurrency(checkedTotal)}
-              </p>
-            </div>
-            {checkedCount === 0 && cart.items.length > 0 && (
-              <div className="flex items-center gap-1 text-xs text-amber-600">
-                <AlertCircle size={12} />
-                <span>Ceklis produk</span>
-              </div>
-            )}
+            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              {checkedCount} item dipilih
+            </span>
+            <p className="text-base font-bold" style={{ color: 'var(--accent-primary)' }}>
+              {formatCurrency(checkedTotal)}
+            </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant="danger"
-              className="text-xs py-2"
+              className="text-xs py-1.5 min-h-0 h-9"
               onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
-              disabled={isReadOnly || checkedCount === 0}
+              disabled={isReadOnly}
             >
               MEMBER
             </Button>
             <Button
               variant="success"
-              className="text-xs py-2"
+              className="text-xs py-1.5 min-h-0 h-9"
               onClick={isReadOnly ? goToShiftPage : () => setPayModal(true)}
-              disabled={isReadOnly || checkedCount === 0}
+              disabled={isReadOnly}
               icon={<CreditCard size={14} />}
             >
               BAYAR
             </Button>
           </div>
-      </div>
+        </div>
+      )}
 
       {/* ─── PAY MODAL ─── */}
       <Modal
