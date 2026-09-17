@@ -17,6 +17,10 @@ function formatLogDate(value: string) {
     hour: '2-digit', minute: '2-digit',
   }).format(new Date(value))
 }
+function formatBranchName(log: { branch?: { name: string }[] | { name: string } | null }) {
+  if (Array.isArray(log.branch)) return log.branch[0]?.name ?? '-'
+  return log.branch?.name ?? '-'
+}
 
 const categories = ['Penjualan', 'Stok', 'Staf', 'Shift', 'Cabang', 'Produk', 'Kategori', 'Member/Hutang', 'Pembayaran Member', 'Pengaturan']
 
@@ -58,7 +62,7 @@ export default function HistoryPage() {
 
       <div className="card p-4">
         <div className="flex items-center justify-between mb-3"><h3 className="font-semibold">{logs.length} aktivitas ditemukan</h3><span className="text-xs" style={{ color: 'var(--text-muted)' }}>{fromDate} s/d {toDate}</span></div>
-        {isLoading ? <p className="py-10 text-center text-sm">Memuat riwayat...</p> : logs.length === 0 ? <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Belum ada aktivitas pada periode ini.</p> : <div className="overflow-x-auto"><table className="table table-compact"><thead><tr><th>Waktu</th><th>Kategori</th><th>Aktivitas</th><th>Pelaku</th><th>Cabang</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td className="whitespace-nowrap text-xs">{formatLogDate(log.created_at)}</td><td><span className="badge badge-blue text-xs">{auditEventCategory(log)}</span></td><td className="font-medium text-sm">{auditActivityLabel(log)}</td><td className="text-sm">{log.actor_name ?? 'Sistem'}</td><td className="text-sm">{log.branch?.[0]?.name ?? log.branch_id ?? '-'}</td></tr>)}</tbody></table></div>}
+        {isLoading ? <p className="py-10 text-center text-sm">Memuat riwayat...</p> : logs.length === 0 ? <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Belum ada aktivitas pada periode ini.</p> : <div className="overflow-x-auto"><table className="table table-compact"><thead><tr><th>Waktu</th><th>Kategori</th><th>Aktivitas</th><th>Pelaku</th><th>Cabang</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td className="whitespace-nowrap text-xs">{formatLogDate(log.created_at)}</td><td><span className="badge badge-blue text-xs">{auditEventCategory(log)}</span></td><td className="font-medium text-sm">{auditActivityLabel(log)}</td><td className="text-sm">{log.actor_name ?? 'Sistem'}</td><td className="text-sm">{formatBranchName(log)}</td></tr>)}</tbody></table></div>}
       </div>
 
       <style>{`.table-compact th, .table-compact td { padding: 0.55rem 0.65rem; } .table-compact { font-size: 0.88rem; } @media print { .no-print, nav, aside, header { display: none !important; } .history-page { padding: 0 !important; } .card { box-shadow: none !important; border: 0 !important; } body { background: white !important; } .table-compact th, .table-compact td { padding: 0.35rem 0.45rem; } }`}</style>

@@ -11,7 +11,7 @@ export interface AuditLog {
   actor_name: string | null
   actor_role: UserRole | null
   branch_id: string | null
-  branch?: { name: string }[] | null
+  branch?: { name: string }[] | { name: string } | null
   description: string
   metadata: Record<string, unknown>
   created_at: string
@@ -27,7 +27,7 @@ export interface AuditLogFilters {
 export async function fetchAuditLogs(filters: AuditLogFilters): Promise<AuditLog[]> {
   const { data, error } = await supabase
     .from('audit_logs')
-    .select('id,category,action,entity_type,entity_id,actor_user_id,actor_name,actor_role,branch_id,branch:branches(name),description,metadata,created_at')
+    .select('id,category,action,entity_type,entity_id,actor_user_id,actor_name,actor_role,branch_id,description,metadata,created_at')
     .gte('created_at', filters.from)
     .lt('created_at', filters.to)
     .order('created_at', { ascending: false })
@@ -35,6 +35,15 @@ export async function fetchAuditLogs(filters: AuditLogFilters): Promise<AuditLog
   if (error) throw error
 
   const logs = (data ?? []) as AuditLog[]
+  const branchIds = Array.from(new Set(logs.map((log) => log.branch_id).filter(Boolean))) as string[]
+  if (branchIds.length > 0) {
+    const { data: branches } = await supabase.from('branches').select('id,name').in('id', branchIds)
+    const branchNames = new Map((branches ?? []).map((branch) => [branch.id, branch.name]))
+    logs.forEach((log) => {
+      const name = log.branch_id ? branchNames.get(log.branch_id) : undefined
+      log.branch = name ? [{ name }] : null
+    })
+  }
   if (filters.viewerRole !== 'manager') return logs
 
   const actorIds = Array.from(new Set(logs.map((log) => log.actor_user_id).filter(Boolean))) as string[]
@@ -73,6 +82,7 @@ export function auditEventCategory(log: Pick<AuditLog, 'category' | 'action' | '
   if (log.action === 'logout') return 'Logout'
   if (log.action === 'check_in') return 'Masuk'
   if (log.action === 'check_out') return 'Pulang'
+  if (log.action.startsWith('shift_handover_')) return 'Shift'
   if (log.entity_type === 'products' && log.action === 'insert') return 'Tambah Produk'
   if (log.entity_type === 'products' && log.action === 'update') return 'Edit Produk'
   if (log.entity_type === 'products' && log.action === 'delete') return 'Hapus Produk'
@@ -83,7 +93,8 @@ export function auditEventCategory(log: Pick<AuditLog, 'category' | 'action' | '
 export function auditActivityLabel(log: Pick<AuditLog, 'description' | 'action' | 'entity_type' | 'actor_name'>) {
   if (log.action === 'login') return `${log.actor_name ?? 'Pengguna'} Login`
   if (log.action === 'logout') return `${log.actor_name ?? 'Pengguna'} Logout`
-  if (log.action === 'check_in') return `${log.actor_name ?? 'Pengguna'} Masuk`
-  if (log.action === 'check_out') return `${log.actor_name ?? 'Pengguna'} Pulang`
+  if (log.action === 'check_in') return 'Staff Masuk Shift'
+  if (log.action === 'check_out') return 'Staff Keluar Shift'
+  if (log.action.startsWith('shift_handover_')) return 'Staff Serah Terima'
   return log.description
 }
