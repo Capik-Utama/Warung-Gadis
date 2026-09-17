@@ -78,11 +78,12 @@ export function auditCategoryLabel(category: string) {
 }
 
 export function auditEventCategory(log: Pick<AuditLog, 'category' | 'action' | 'entity_type'>) {
-  if (log.action === 'login') return 'Login'
-  if (log.action === 'logout') return 'Logout'
-  if (log.action === 'check_in') return 'Masuk'
-  if (log.action === 'check_out') return 'Pulang'
-  if (log.action.startsWith('shift_handover_')) return 'Shift'
+  const action = log.action.toLowerCase()
+  if (action === 'login') return 'Login'
+  if (action === 'logout') return 'Logout'
+  if (action === 'check_in' || action.includes('masuk staf')) return 'Masuk'
+  if (action === 'check_out' || action.includes('keluar staf')) return 'Pulang'
+  if (action.startsWith('shift_handover_') || log.entity_type === 'shift_handovers') return 'Shift'
   if (log.entity_type === 'products' && log.action === 'insert') return 'Tambah Produk'
   if (log.entity_type === 'products' && log.action === 'update') return 'Edit Produk'
   if (log.entity_type === 'products' && log.action === 'delete') return 'Hapus Produk'
@@ -91,10 +92,12 @@ export function auditEventCategory(log: Pick<AuditLog, 'category' | 'action' | '
 }
 
 export function auditActivityLabel(log: Pick<AuditLog, 'description' | 'action' | 'entity_type' | 'actor_name'>) {
-  if (log.action === 'login') return `${log.actor_name ?? 'Pengguna'} Login`
-  if (log.action === 'logout') return `${log.actor_name ?? 'Pengguna'} Logout`
-  if (log.action === 'check_in') return 'Staff Masuk Shift'
-  if (log.action === 'check_out') return 'Staff Keluar Shift'
-  if (log.action.startsWith('shift_handover_')) return 'Staff Serah Terima'
+  const action = log.action.toLowerCase()
+  const description = log.description.toLowerCase()
+  if (action === 'login') return `${log.actor_name ?? 'Pengguna'} Login`
+  if (action === 'logout') return `${log.actor_name ?? 'Pengguna'} Logout`
+  if (action === 'check_in' || action.includes('masuk staf') || description.includes('shift masuk staf')) return 'Staff Masuk Shift'
+  if (action === 'check_out' || action.includes('keluar staf') || description.includes('shift keluar staf')) return 'Staff Keluar Shift'
+  if (action.startsWith('shift_handover_') || log.entity_type === 'shift_handovers' || description.includes('serah terima shift')) return 'Staff Serah Terima'
   return log.description
 }
