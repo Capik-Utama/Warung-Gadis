@@ -37,8 +37,6 @@ export async function fetchAuditLogs(filters: AuditLogFilters): Promise<AuditLog
   const logs = (data ?? []) as AuditLog[]
   if (filters.viewerRole !== 'manager') return logs
 
-  // Custom auth is application-level, so enforce the manager visibility rule here too.
-  // This also covers older rows whose actor_role was not stored yet.
   const actorIds = Array.from(new Set(logs.map((log) => log.actor_user_id).filter(Boolean))) as string[]
   if (actorIds.length === 0) return logs.filter((log) => log.actor_role !== 'developer')
   const { data: actors } = await supabase.from('users').select('id,role').in('id', actorIds)
@@ -68,4 +66,24 @@ export function auditCategoryLabel(category: string) {
     'Member/Hutang': 'Member/Hutang', 'Pembayaran Member': 'Pembayaran Member', Pengaturan: 'Pengaturan',
   }
   return labels[category] ?? category
+}
+
+export function auditEventCategory(log: Pick<AuditLog, 'category' | 'action' | 'entity_type'>) {
+  if (log.action === 'login') return 'Login'
+  if (log.action === 'logout') return 'Logout'
+  if (log.action === 'check_in') return 'Masuk'
+  if (log.action === 'check_out') return 'Pulang'
+  if (log.entity_type === 'products' && log.action === 'insert') return 'Tambah Produk'
+  if (log.entity_type === 'products' && log.action === 'update') return 'Edit Produk'
+  if (log.entity_type === 'products' && log.action === 'delete') return 'Hapus Produk'
+  if (log.entity_type === 'shifts' || log.entity_type === 'shift_handovers') return 'Shift'
+  return auditCategoryLabel(log.category)
+}
+
+export function auditActivityLabel(log: Pick<AuditLog, 'description' | 'action' | 'entity_type' | 'actor_name'>) {
+  if (log.action === 'login') return `${log.actor_name ?? 'Pengguna'} Login`
+  if (log.action === 'logout') return `${log.actor_name ?? 'Pengguna'} Logout`
+  if (log.action === 'check_in') return `${log.actor_name ?? 'Pengguna'} Masuk`
+  if (log.action === 'check_out') return `${log.actor_name ?? 'Pengguna'} Pulang`
+  return log.description
 }
