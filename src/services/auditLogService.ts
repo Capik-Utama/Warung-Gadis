@@ -36,20 +36,38 @@ export async function fetchAuditLogs(filters: AuditLogFilters): Promise<AuditLog
   return (data ?? []) as AuditLog[]
 }
 
+export async function recordAuthEvent(
+  event: 'login' | 'logout',
+  user: { id: string; name: string },
+  branchId?: string | null,
+): Promise<void> {
+  const description = event === 'login' ? `${user.name} masuk (login)` : `${user.name} pulang (logout)`
+  const { error } = await supabase.from('audit_logs').insert({
+    category: 'Staf',
+    action: event,
+    entity_type: 'auth',
+    entity_id: user.id,
+    actor_user_id: user.id,
+    actor_name: user.name,
+    branch_id: branchId ?? null,
+    description,
+    metadata: { event, source: 'application' },
+  })
+  if (error) console.warn('[Warung Gadis] Gagal menyimpan log autentikasi:', error.message)
+}
+
 export function auditCategoryLabel(category: string) {
   const labels: Record<string, string> = {
-    Penjualan: 'Penjualan',
-    Stok: 'Stok',
-    'Stok Produk': 'Stok',
-    Staf: 'Staf',
-    Shift: 'Shift',
-    'Serah Terima Shift': 'Shift',
-    Cabang: 'Cabang',
-    Produk: 'Produk',
-    Kategori: 'Kategori',
-    'Member/Hutang': 'Member/Hutang',
-    'Pembayaran Member': 'Pembayaran Member',
-    Pengaturan: 'Pengaturan',
+    Penjualan: 'Penjualan', Stok: 'Stok', 'Stok Produk': 'Stok', Staf: 'Staf', Shift: 'Shift',
+    'Serah Terima Shift': 'Shift', Cabang: 'Cabang', Produk: 'Produk', Kategori: 'Kategori',
+    'Member/Hutang': 'Member/Hutang', 'Pembayaran Member': 'Pembayaran Member', Pengaturan: 'Pengaturan',
   }
   return labels[category] ?? category
+}
+
+export async function logOutUser(
+  user: { id: string; name: string },
+  branchId?: string | null,
+): Promise<void> {
+  await recordAuthEvent('logout', user, branchId)
 }

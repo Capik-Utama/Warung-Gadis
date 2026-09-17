@@ -9,6 +9,7 @@ import {
 import { AppLogo, WGLogo } from '@/components/shared/Logo'
 import { useAuthStore } from '@/store/authStore'
 import { ROLE_MENUS, MENU_PERMISSIONS } from '@/permissions'
+import { recordAuthEvent } from '@/services/auditLogService'
 
 interface NavItem {
   key: string
@@ -58,7 +59,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpe
     return false
   })
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user) await recordAuthEvent('logout', user, useAuthStore.getState().selectedBranch?.id)
     logout()
     navigate('/login')
   }

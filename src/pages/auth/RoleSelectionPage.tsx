@@ -4,6 +4,7 @@ import { LayoutDashboard, ShoppingCart, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { WGLogo } from '@/components/shared/Logo'
+import { recordAuthEvent } from '@/services/auditLogService'
 
 export default function RoleSelectionPage() {
   const navigate = useNavigate()
@@ -17,7 +18,8 @@ export default function RoleSelectionPage() {
     navigate('/select-branch', { state: { returnTo: '/kasir' } })
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user) await recordAuthEvent('logout', user, useAuthStore.getState().selectedBranch?.id)
     logout()
     navigate('/login')
   }

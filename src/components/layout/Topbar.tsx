@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, Select } from '@/components/ui/Input'
 import { closeAllShifts, checkInShift, getActiveShift } from '@/services/shiftService'
 import { loginUser } from '@/services/userService'
+import { recordAuthEvent } from '@/services/auditLogService'
 import { fetchBranches, setBranchOperational } from '@/services/branchService'
 import type { Branch } from '@/types'
 
@@ -71,7 +72,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, mobileMenuButton }) => {
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user) await recordAuthEvent('logout', user, selectedBranch?.id)
     logout()
     toast.success('Berhasil keluar')
     navigate('/login')

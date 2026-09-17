@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { applyTheme } from '@/config/theme'
+import { supabase } from '@/config/supabase'
 import { MainLayout } from '@/components/layout/MainLayout'
 
 import LoginPage from '@/pages/auth/LoginPage'
@@ -29,7 +30,15 @@ import FavoritPage from '@/pages/favorit/FavoritPage'
 import HistoryPage from '@/pages/history/HistoryPage'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 5_000,
+      refetchInterval: 15_000,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+      retry: 1,
+    },
+  },
 })
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -38,10 +47,19 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function RequireBranch({ children }: { children: React.ReactNode }) {
-  // Branch selection is now optional for most pages
-  // Only transaction pages will enforce branch selection
-  return <>{children}</>
+function RealtimeSync() {
+  useEffect(() => {
+    const channel = supabase
+      .channel('warung-gadis-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        void queryClient.invalidateQueries()
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') console.warn('[Warung Gadis] Realtime channel error; polling remains active.')
+      })
+    return () => { void supabase.removeChannel(channel) }
+  }, [])
+  return null
 }
 
 function App() {
@@ -50,6 +68,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RealtimeSync />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -78,21 +97,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '12px',
-            fontFamily: 'Poppins, sans-serif',
-            fontSize: '14px',
-          },
-          success: { iconTheme: { primary: '#22c55e', secondary: 'white' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: 'white' } },
-        }}
-      />
+      <Toaster position="top-right" toastOptions={{ style: { background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', fontFamily: 'Poppins, sans-serif', fontSize: '14px' }, success: { iconTheme: { primary: '#22c55e', secondary: 'white' } }, error: { iconTheme: { primary: '#ef4444', secondary: 'white' } } }} />
     </QueryClientProvider>
   )
 }

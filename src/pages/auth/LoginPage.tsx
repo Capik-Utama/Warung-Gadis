@@ -4,6 +4,7 @@ import { Eye, EyeOff, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { loginUser, fetchUserBranches } from '@/services/userService'
+import { recordAuthEvent } from '@/services/auditLogService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { WGLogo } from '@/components/shared/Logo'
@@ -26,6 +27,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { user, permissions } = await loginUser({ name: name.trim(), password })
+      await recordAuthEvent('login', user)
 
       setUser(user)
       setPermissions(permissions as any)

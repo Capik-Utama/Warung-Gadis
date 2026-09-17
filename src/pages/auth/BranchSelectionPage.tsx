@@ -5,6 +5,7 @@ import { GitBranch, LogOut, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { fetchBranches } from '@/services/branchService'
+import { recordAuthEvent } from '@/services/auditLogService'
 import { Button } from '@/components/ui/Button'
 import { WGLogo } from '@/components/shared/Logo'
 import type { Branch } from '@/types'
@@ -40,7 +41,8 @@ export default function BranchSelectionPage() {
     navigate(returnTo, { replace: true })
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user) await recordAuthEvent('logout', user, useAuthStore.getState().selectedBranch?.id)
     logout()
     navigate('/login')
   }

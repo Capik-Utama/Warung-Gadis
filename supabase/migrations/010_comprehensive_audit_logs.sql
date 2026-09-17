@@ -1,6 +1,24 @@
 -- Comprehensive application activity audit log
 -- Captures inserts, updates, and deletes made by the POS application.
 
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  category TEXT NOT NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  actor_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  actor_name TEXT,
+  branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL,
+  description TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all" ON public.audit_logs;
+CREATE POLICY "allow_all" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+
 CREATE OR REPLACE FUNCTION public.audit_log_row_change()
 RETURNS trigger
 LANGUAGE plpgsql
