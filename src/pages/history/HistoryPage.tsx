@@ -4,6 +4,7 @@ import { Download, History, Filter, RefreshCw } from 'lucide-react'
 import { fetchAuditLogs, auditCategoryLabel } from '@/services/auditLogService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { useAuthStore } from '@/store/authStore'
 
 function dateInputValue(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -18,7 +19,8 @@ export default function HistoryPage() {
   const [fromDate, setFromDate] = useState(dateInputValue(new Date(today.getFullYear(), today.getMonth(), 1)))
   const [toDate, setToDate] = useState(dateInputValue(today))
   const [category, setCategory] = useState('')
-  const filters = useMemo(() => ({ from: isoStart(fromDate), to: isoEnd(toDate), category: category || undefined }), [fromDate, toDate, category])
+  const viewerRole = useAuthStore((state) => state.user?.role)
+  const filters = useMemo(() => ({ from: isoStart(fromDate), to: isoEnd(toDate), category: category || undefined, viewerRole }), [fromDate, toDate, category, viewerRole])
   const { data: logs = [], isLoading, refetch } = useQuery({ queryKey: ['audit-logs', filters], queryFn: () => fetchAuditLogs(filters) })
   const invalidRange = fromDate > toDate
 
@@ -33,7 +35,7 @@ export default function HistoryPage() {
   return (
     <div className="space-y-5 history-page">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div><h1 className="page-title flex items-center gap-2"><History size={24} /> Log / History</h1><p className="page-subtitle">Riwayat semua aktivitas aplikasi. Log otomatis disimpan maksimal 1 tahun.</p></div>
+        <div><h1 className="page-title flex items-center gap-2"><History size={24} /> Log / History</h1><p className="page-subtitle">Riwayat semua aktivitas aplikasi. Developer melihat semua log, manager tidak melihat aktivitas developer.</p></div>
         <div className="flex gap-2 no-print"><Button variant="secondary" size="sm" icon={<RefreshCw size={15} />} onClick={() => refetch()}>Refresh</Button><Button variant="primary" size="sm" icon={<Download size={15} />} onClick={downloadPdf} disabled={invalidRange}>Download PDF</Button></div>
       </div>
 

@@ -47,6 +47,13 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RequireAuditAccess({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'developer' && user.role !== 'manager') return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
 function RealtimeSync() {
   useEffect(() => {
     const channel = supabase
@@ -92,7 +99,7 @@ function App() {
             <Route path="pengaturan/sistem" element={<SystemSettingsPage />} />
             <Route path="theme" element={<ThemePage />} />
             <Route path="backup" element={<BackupPage />} />
-            <Route path="history" element={<HistoryPage />} />
+            <Route path="history" element={<RequireAuditAccess><HistoryPage /></RequireAuditAccess>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

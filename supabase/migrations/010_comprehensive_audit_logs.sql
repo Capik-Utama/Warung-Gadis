@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   entity_id TEXT,
   actor_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   actor_name TEXT,
+  actor_role TEXT,
   branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL,
   description TEXT NOT NULL,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -82,8 +83,9 @@ BEGIN
   END;
 
   metadata_value := jsonb_build_object('table_name', TG_TABLE_NAME, 'operation', TG_OP, 'new_values', row_data, 'old_values', old_data);
-  INSERT INTO public.audit_logs(category, action, entity_type, entity_id, actor_user_id, actor_name, branch_id, description, metadata)
-  VALUES (category_value, action_value, TG_TABLE_NAME, entity_value, actor_id, actor_name_value, branch_id_value, description_value, metadata_value);
+  INSERT INTO public.audit_logs(category, action, entity_type, entity_id, actor_user_id, actor_name, actor_role, branch_id, description, metadata)
+  VALUES (category_value, action_value, TG_TABLE_NAME, entity_value, actor_id, actor_name_value,
+    (SELECT role FROM public.users WHERE id = actor_id), branch_id_value, description_value, metadata_value);
 
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 EXCEPTION WHEN OTHERS THEN
