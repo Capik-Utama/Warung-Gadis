@@ -357,7 +357,8 @@ export default function KasirPage() {
   }
 
   return (
-    <div className="flex flex-col gap-2 min-h-full">
+    <div className="flex flex-col gap-2 h-full">
+      <div className="flex-1 overflow-y-auto min-h-0 pr-1">
       {isDeveloperOrManager && (
         <div className="card p-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -532,7 +533,7 @@ export default function KasirPage() {
         </div>
       )}
 
-      {/* Product list follows the page scroll so the branch and status panels move with it. */}
+      {/* Product list scrolls together with the branch and status panels. */}
       <div>
         <div className="space-y-1 pr-1">
           {loadingProducts ? (
@@ -611,11 +612,12 @@ export default function KasirPage() {
           )}
         </div>
       </div>
+      </div>
 
-      {/* STICKY FOOTER: appears only after a product is checked */}
+      {/* Action menu stays visible as soon as a product is checked. */}
       {checkedCount > 0 && (
         <div
-          className="flex-shrink-0 p-2 rounded-xl border flex flex-col gap-1.5"
+          className="flex-shrink-0 p-2 rounded-xl border flex flex-col gap-1.5 shadow-lg"
           style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
         >
           <div className="flex items-center justify-between">
