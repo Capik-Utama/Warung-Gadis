@@ -36,3 +36,12 @@ export interface DetailedReportResult {
   rows: DetailedReportRow[]
   summary: DetailedReportSummary
 }
+
+export interface SoldProductReportRow {
+  product_id: string
+  product_name: string
+  unit: string
+  quantity: number
+  revenue: number
+  transaction_count: number
+}

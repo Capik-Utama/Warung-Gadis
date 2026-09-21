@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileSpreadsheet, FileText, TrendingUp, Users, Package, Filter, CalendarRange } from 'lucide-react'
-import { getDailySales, getTopProducts, getDetailedReport, getReportShifts } from '@/services/reportService'
+import { FileSpreadsheet, FileText, TrendingUp, Users, Package, Filter, CalendarRange, Table2, ChevronDown, ChevronUp } from 'lucide-react'
+import { getDailySales, getTopProducts, getDetailedReport, getReportShifts, getSoldProducts } from '@/services/reportService'
 import { fetchBranches } from '@/services/branchService'
 import { fetchUsers } from '@/services/userService'
 import { StatCard } from '@/components/ui/Card'
@@ -57,6 +57,7 @@ export default function LaporanPage() {
   const [staffId, setStaffId] = useState('')
   const [shiftId, setShiftId] = useState('')
   const [mode, setMode] = useState<ReportMode>('total')
+  const [showSoldProducts, setShowSoldProducts] = useState(false)
 
   const { data: branches = [] } = useQuery({ queryKey: ['report-branches'], queryFn: fetchBranches })
   const { data: users = [] } = useQuery({ queryKey: ['report-users'], queryFn: fetchUsers })
@@ -84,6 +85,11 @@ export default function LaporanPage() {
     queryFn: () => getTopProducts(selectedBranch?.id ?? '', 10),
     enabled: !!selectedBranch?.id,
   })
+  const { data: soldProducts = [], isLoading: loadingSoldProducts } = useQuery({
+    queryKey: ['sold-products-report', reportFilters, shiftId],
+    queryFn: () => getSoldProducts({ ...reportFilters, shiftId: shiftId || undefined }),
+    enabled: showSoldProducts,
+  })
 
   const groupedRows = useMemo(() => groupRows(detail.rows, mode), [detail.rows, mode])
   const activeShiftOptions = shifts.filter((shift) => (!branchId || shift.branch_id === branchId) && (!staffId || shift.staff_id === staffId))
@@ -108,7 +114,7 @@ export default function LaporanPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div><h1 className="page-title">Laporan Penjualan</h1><p className="page-subtitle">Telusuri pendapatan berdasarkan total, shift, staf, cabang, dan periode.</p></div>
-        <div className="flex gap-2"><Button variant="secondary" size="sm" icon={<FileSpreadsheet size={15} />} onClick={() => exportToCSV(detail.rows, 'laporan-detail')}>Export Excel</Button><Button variant="secondary" size="sm" icon={<FileText size={15} />} onClick={() => window.print()}>Cetak / PDF</Button></div>
+        <div className="flex gap-2 flex-wrap"><Button variant="secondary" size="sm" icon={<FileSpreadsheet size={15} />} onClick={() => exportToCSV(detail.rows, 'laporan-detail')}>Export Excel</Button><Button variant="secondary" size="sm" icon={<FileText size={15} />} onClick={() => window.print()}>Cetak / PDF</Button><Button variant="primary" size="sm" icon={showSoldProducts ? <ChevronUp size={15} /> : <ChevronDown size={15} />} onClick={() => setShowSoldProducts((visible) => !visible)}>{showSoldProducts ? 'Sembunyikan produk terjual' : 'Tampilkan produk terjual'}</Button></div>
       </div>
 
       <div className="card p-4 space-y-4">
@@ -138,6 +144,8 @@ export default function LaporanPage() {
       <div className="card p-4"><h3 className="font-semibold mb-3">Ringkasan {mode === 'total' ? 'total periode' : mode === 'shift' ? 'per shift' : mode === 'staff' ? 'per staf' : 'per cabang'}</h3>{loadingDetail ? <p className="py-6 text-center text-sm">Memuat laporan...</p> : groupedRows.length === 0 ? <p className="py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Tidak ada data pada filter ini.</p> : <div className="overflow-x-auto"><table className="table"><thead><tr><th>Kelompok</th><th>Jumlah transaksi</th><th className="text-right">Pendapatan</th></tr></thead><tbody>{groupedRows.map((row) => <tr key={row.label}><td className="font-medium">{row.label}</td><td>{row.count}</td><td className="text-right font-bold" style={{ color: 'var(--accent-primary)' }}>{formatCurrency(row.total)}</td></tr>)}</tbody></table></div>}</div>
 
       <div className="card p-4"><div className="flex items-center justify-between mb-3"><h3 className="font-semibold">Rincian transaksi</h3><span className="text-xs" style={{ color: 'var(--text-muted)' }}>{detail.rows.length} baris</span></div><div className="overflow-x-auto"><table className="table"><thead><tr><th>Tanggal</th><th>Kode</th><th>Jenis</th><th>Staf</th><th>Cabang</th><th>Shift</th><th>Metode</th><th className="text-right">Nominal</th></tr></thead><tbody>{detail.rows.slice(0, 300).map((row) => <tr key={`${row.kind}-${row.id}`}><td className="whitespace-nowrap">{new Date(row.date).toLocaleString('id-ID')}</td><td>{row.code}</td><td>{row.kind}</td><td>{row.staff_name}</td><td>{row.branch_name}</td><td>{row.shift_number ? `Shift ${row.shift_number} (${row.shift_number === 1 ? 'Siang' : 'Malam'})` : '-'}</td><td>{row.payment_method}</td><td className="text-right font-semibold">{formatCurrency(row.amount)}</td></tr>)}</tbody></table></div></div>
+
+      {showSoldProducts && <div className="card p-4"><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Produk terjual</h3><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Agregasi produk dari transaksi lunas sesuai filter laporan.</p></div><Button variant="secondary" size="sm" icon={<FileSpreadsheet size={14} />} onClick={() => exportToCSV(soldProducts, 'laporan-produk-terjual')} disabled={soldProducts.length === 0}>Export tabel</Button></div>{loadingSoldProducts ? <p className="py-8 text-center text-sm">Memuat produk terjual...</p> : soldProducts.length === 0 ? <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Tidak ada produk terjual pada filter ini.</p> : <div className="overflow-x-auto"><table className="table"><thead><tr><th><span className="inline-flex items-center gap-1"><Table2 size={14} /> Produk</span></th><th>Satuan</th><th className="text-right">Jumlah terjual</th><th className="text-right">Transaksi</th><th className="text-right">Pendapatan</th></tr></thead><tbody>{soldProducts.map((product) => <tr key={product.product_id}><td className="font-medium">{product.product_name}</td><td>{product.unit}</td><td className="text-right">{product.quantity}</td><td className="text-right">{product.transaction_count}</td><td className="text-right font-semibold" style={{ color: 'var(--accent-primary)' }}>{formatCurrency(product.revenue)}</td></tr>)}</tbody></table></div>}</div>}
 
       <div className="card p-5"><h3 className="font-semibold mb-4">Grafik penjualan cabang terpilih</h3><div className="flex gap-2 mb-4">{(['7', '30', '90'] as const).map((value) => <button key={value} onClick={() => setRange(value)} className="px-3 py-1.5 rounded-full text-xs border" style={{ background: range === value ? 'var(--accent-primary)' : 'var(--bg-card)', color: range === value ? 'white' : 'var(--text-secondary)', borderColor: 'var(--border-color)' }}>{value} Hari</button>)}</div>{selectedBranch ? <ResponsiveContainer width="100%" height={230}><BarChart data={salesData}><CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" /><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip formatter={(value: number) => formatCurrency(value)} /><Legend /><Bar dataKey="total" fill="#2563eb" name="Pendapatan" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer> : <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat grafik harian.</p>}</div>
 

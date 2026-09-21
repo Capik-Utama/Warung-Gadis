@@ -7,6 +7,7 @@ import {
   getBusinessDayLabel,
 } from './businessDayHelper'
 import { getResetHour } from './systemSettingService'
+import type { SoldProductReportRow } from '@/types/report'
 
 // ─── Helpers internal ────────────────────────────────────────────────────────
 
@@ -204,6 +205,62 @@ export async function getTopProducts(branchId: string, limit = 10): Promise<TopP
   return Array.from(grouped.values())
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, limit)
+}
+
+export interface SoldProductReportFilters {
+  from: string
+  to: string
+  branchId?: string
+  staffId?: string
+  shiftId?: string
+}
+
+export async function getSoldProducts(filters: SoldProductReportFilters): Promise<SoldProductReportRow[]> {
+  let query = supabase
+    .from('transaction_items')
+    .select('product_id, quantity, subtotal, product:products(name, unit), transaction:transactions!inner(id, user_id, branch_id, status, created_at)')
+    .eq('transaction.status', 'paid')
+    .gte('transaction.created_at', filters.from)
+    .lt('transaction.created_at', filters.to)
+
+  if (filters.branchId) query = query.eq('transaction.branch_id', filters.branchId)
+  if (filters.staffId) query = query.eq('transaction.user_id', filters.staffId)
+
+  const { data, error } = await query.limit(5000)
+  if (error) throw error
+
+  const shifts = filters.shiftId ? await getReportShifts(filters) : []
+  const selectedShift = shifts.find((shift) => shift.id === filters.shiftId)
+  const grouped = new Map<string, SoldProductReportRow & { transactionIds: Set<string> }>()
+
+  ;(data ?? []).forEach((row: any) => {
+    const transaction = Array.isArray(row.transaction) ? row.transaction[0] : row.transaction
+    if (!transaction) return
+    if (selectedShift) {
+      const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jakarta', hour: 'numeric', hour12: false }).format(new Date(transaction.created_at)))
+      const shiftNumber = hour >= 6 && hour < 18 ? 1 : 2
+      if (shiftNumber !== selectedShift.number) return
+    }
+    const product = Array.isArray(row.product) ? row.product[0] : row.product
+    const existing = grouped.get(row.product_id) ?? {
+      product_id: row.product_id,
+      product_name: product?.name ?? row.product_id,
+      unit: product?.unit ?? 'pcs',
+      quantity: 0,
+      revenue: 0,
+      transaction_count: 0,
+      transactionIds: new Set<string>(),
+    }
+    existing.quantity += Number(row.quantity ?? 0)
+    existing.revenue += Number(row.subtotal ?? 0)
+    existing.transactionIds.add(transaction.id)
+    existing.transaction_count = existing.transactionIds.size
+    grouped.set(row.product_id, existing)
+  })
+
+  return Array.from(grouped.values())
+    .map(({ transactionIds: _transactionIds, ...row }) => row)
+    .sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue)
 }
 
 export async function getStaffSales(branchId: string): Promise<StaffSales[]> {
