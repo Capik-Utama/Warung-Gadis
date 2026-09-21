@@ -46,8 +46,10 @@ function groupRows(rows: DetailedReportRow[], mode: ReportMode) {
 }
 
 export default function LaporanPage() {
-  const { selectedBranch, hasPermission } = useAuthStore()
+  const { selectedBranch, user, hasPermission } = useAuthStore()
   const canViewReport = hasPermission('view_report')
+  const isAllBranchRole = user?.role === 'developer' || user?.role === 'manager'
+  const chartBranchId = isAllBranchRole ? '' : selectedBranch?.id ?? ''
   const [range, setRange] = useState<'7' | '30' | '90'>('30')
   const today = new Date()
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -76,9 +78,9 @@ export default function LaporanPage() {
     queryFn: () => getDetailedReport({ ...reportFilters, shiftId: shiftId || undefined }),
   })
   const { data: salesData = [] } = useQuery({
-    queryKey: ['sales-report', selectedBranch?.id ?? '', range],
-    queryFn: () => getDailySales(selectedBranch?.id ?? '', parseInt(range)),
-    enabled: !!selectedBranch?.id,
+    queryKey: ['sales-report', chartBranchId, range],
+    queryFn: () => getDailySales(chartBranchId, parseInt(range)),
+    enabled: isAllBranchRole || !!selectedBranch?.id,
   })
   const { data: topProducts = [] } = useQuery({
     queryKey: ['top-products-report', selectedBranch?.id ?? ''],
@@ -119,12 +121,16 @@ export default function LaporanPage() {
 
       <div className="card p-4 space-y-4">
         <div className="flex items-center gap-2 font-semibold"><Filter size={17} style={{ color: 'var(--accent-primary)' }} /> Filter laporan</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <Input label="Dari tanggal" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
-          <Input label="Sampai tanggal" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
-          <label className="label">Cabang<select className="input mt-1" value={branchId} onChange={(event) => { setBranchId(event.target.value); setShiftId('') }}><option value="">Semua cabang</option>{branches.filter((branch) => branch.is_active).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
-          <label className="label">Staf<select className="input mt-1" value={staffId} onChange={(event) => { setStaffId(event.target.value); setShiftId('') }}><option value="">Semua staf</option>{users.filter((user) => user.is_active).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>
-          <label className="label">Shift<select className="input mt-1" value={shiftId} onChange={(event) => setShiftId(event.target.value)}><option value="">Semua shift</option>{activeShiftOptions.map((shift) => <option key={shift.id} value={shift.id}>Shift {shift.number} ({shift.number === 1 ? 'Siang' : 'Malam'})</option>)}</select></label>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <Input label="Dari tanggal" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="h-9 text-xs" />
+            <Input label="Sampai tanggal" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="h-9 text-xs" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <label className="label text-xs">Cabang<select className="input mt-1 h-9 text-xs" value={branchId} onChange={(event) => { setBranchId(event.target.value); setShiftId('') }}><option value="">Semua cabang</option>{branches.filter((branch) => branch.is_active).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
+            <label className="label text-xs">Staf<select className="input mt-1 h-9 text-xs" value={staffId} onChange={(event) => { setStaffId(event.target.value); setShiftId('') }}><option value="">Semua staf</option>{users.filter((user) => user.is_active).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>
+            <label className="label text-xs">Shift<select className="input mt-1 h-9 text-xs" value={shiftId} onChange={(event) => setShiftId(event.target.value)}><option value="">Semua shift</option>{activeShiftOptions.map((shift) => <option key={shift.id} value={shift.id}>Shift {shift.number} ({shift.number === 1 ? 'Siang' : 'Malam'})</option>)}</select></label>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Tampilkan per:</span>
@@ -145,9 +151,9 @@ export default function LaporanPage() {
 
       <div className="card p-4"><div className="flex items-center justify-between mb-3"><h3 className="font-semibold">Rincian transaksi</h3><span className="text-xs" style={{ color: 'var(--text-muted)' }}>{detail.rows.length} baris</span></div><div className="overflow-x-auto"><table className="table"><thead><tr><th>Tanggal</th><th>Kode</th><th>Jenis</th><th>Staf</th><th>Cabang</th><th>Shift</th><th>Metode</th><th className="text-right">Nominal</th></tr></thead><tbody>{detail.rows.slice(0, 300).map((row) => <tr key={`${row.kind}-${row.id}`}><td className="whitespace-nowrap">{new Date(row.date).toLocaleString('id-ID')}</td><td>{row.code}</td><td>{row.kind}</td><td>{row.staff_name}</td><td>{row.branch_name}</td><td>{row.shift_number ? `Shift ${row.shift_number} (${row.shift_number === 1 ? 'Siang' : 'Malam'})` : '-'}</td><td>{row.payment_method}</td><td className="text-right font-semibold">{formatCurrency(row.amount)}</td></tr>)}</tbody></table></div></div>
 
-      {showSoldProducts && <div className="card p-4"><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Produk terjual</h3><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Agregasi produk dari transaksi lunas sesuai filter laporan.</p></div><Button variant="secondary" size="sm" icon={<FileSpreadsheet size={14} />} onClick={() => exportToCSV(soldProducts, 'laporan-produk-terjual')} disabled={soldProducts.length === 0}>Export tabel</Button></div>{loadingSoldProducts ? <p className="py-8 text-center text-sm">Memuat produk terjual...</p> : soldProducts.length === 0 ? <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Tidak ada produk terjual pada filter ini.</p> : <div className="overflow-x-auto"><table className="table text-sm"><thead><tr><th className="py-2"><span className="inline-flex items-center gap-1"><Table2 size={14} /> Produk</span></th><th className="py-2 text-right whitespace-nowrap">Jumlah terjual (pcs)</th><th className="py-2 text-right whitespace-nowrap">Sisa stok</th><th className="py-2 text-right whitespace-nowrap">Pendapatan</th></tr></thead><tbody>{soldProducts.map((product) => <tr key={product.product_id}><td className="py-2 font-medium">{product.product_name}</td><td className="py-2 text-right">{product.quantity}</td><td className="py-2 text-right">{product.remaining_stock}</td><td className="py-2 text-right font-semibold" style={{ color: 'var(--accent-primary)' }}>{formatCurrency(product.revenue)}</td></tr>)}</tbody></table></div>}</div>}
+      {showSoldProducts && <div className="card p-4"><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Produk terjual</h3><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Agregasi produk dari transaksi lunas sesuai filter laporan.</p></div><Button variant="secondary" size="sm" icon={<FileSpreadsheet size={14} />} onClick={() => exportToCSV(soldProducts, 'laporan-produk-terjual')} disabled={soldProducts.length === 0}>Export tabel</Button></div>{loadingSoldProducts ? <p className="py-8 text-center text-sm">Memuat produk terjual...</p> : soldProducts.length === 0 ? <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Tidak ada produk terjual pada filter ini.</p> : <div className="overflow-x-auto"><table className="table min-w-[560px] text-sm text-center"><thead><tr><th className="py-2 text-center whitespace-nowrap"><span className="inline-flex items-center justify-center gap-1"><Table2 size={14} /> Produk</span></th><th className="py-2 text-center whitespace-nowrap">Jumlah terjual (pcs)</th><th className="py-2 text-center whitespace-nowrap">Sisa stok</th><th className="py-2 text-center whitespace-nowrap">Pendapatan</th></tr></thead><tbody>{soldProducts.map((product) => <tr key={product.product_id}><td className="py-2 text-center font-medium whitespace-nowrap">{product.product_name}</td><td className="py-2 text-center">{product.quantity}</td><td className="py-2 text-center">{product.remaining_stock}</td><td className="py-2 text-center font-semibold" style={{ color: 'var(--accent-primary)' }}>{formatCurrency(product.revenue)}</td></tr>)}</tbody></table></div>}</div>}
 
-      <div className="card p-5"><h3 className="font-semibold mb-4">Grafik penjualan cabang terpilih</h3><div className="flex gap-2 mb-4">{(['7', '30', '90'] as const).map((value) => <button key={value} onClick={() => setRange(value)} className="px-3 py-1.5 rounded-full text-xs border" style={{ background: range === value ? 'var(--accent-primary)' : 'var(--bg-card)', color: range === value ? 'white' : 'var(--text-secondary)', borderColor: 'var(--border-color)' }}>{value} Hari</button>)}</div>{selectedBranch ? <ResponsiveContainer width="100%" height={230}><BarChart data={salesData}><CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" /><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip formatter={(value: number) => formatCurrency(value)} /><Legend /><Bar dataKey="total" fill="#2563eb" name="Pendapatan" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer> : <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat grafik harian.</p>}</div>
+      <div className="card p-5"><h3 className="font-semibold mb-4">{isAllBranchRole ? 'Grafik penjualan seluruh cabang' : 'Grafik penjualan cabang terpilih'}</h3><div className="flex gap-2 mb-4">{(['7', '30', '90'] as const).map((value) => <button key={value} onClick={() => setRange(value)} className="px-3 py-1.5 rounded-full text-xs border" style={{ background: range === value ? 'var(--accent-primary)' : 'var(--bg-card)', color: range === value ? 'white' : 'var(--text-secondary)', borderColor: 'var(--border-color)' }}>{value} Hari</button>)}</div>{isAllBranchRole || selectedBranch ? <ResponsiveContainer width="100%" height={230}><BarChart data={salesData}><CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" /><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip formatter={(value: number) => formatCurrency(value)} /><Legend /><Bar dataKey="total" fill="#2563eb" name="Pendapatan" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer> : <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat grafik harian.</p>}</div>
 
       {selectedBranch && topProducts.length > 0 && <div className="card p-5"><h3 className="font-semibold mb-3">Produk terlaris di {selectedBranch.name}</h3><div className="grid md:grid-cols-2 gap-2">{topProducts.map((product, index) => <div key={product.product_id} className="flex items-center gap-3 py-2"><span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: index < 3 ? '#2563eb' : '#94a3b8' }}>{index + 1}</span><span className="flex-1 text-sm">{product.product_name}</span><span className="text-xs" style={{ color: 'var(--text-muted)' }}>{product.quantity} terjual</span><b className="text-sm">{formatCurrency(product.revenue)}</b></div>)}</div></div>}
 
