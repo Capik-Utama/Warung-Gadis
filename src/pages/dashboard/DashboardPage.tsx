@@ -9,7 +9,7 @@ import { StatCard } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-import { getTodayStats, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches, getTodayStaffStats } from '@/services/reportService'
+import { getTodayStats, getTopProducts, getDailySales, getLowStockProducts, getLowStockAllBranches } from '@/services/reportService'
 import { fetchTransactions } from '@/services/transactionService'
 import { fetchDebts } from '@/services/debtService'
 import { getActiveShift } from '@/services/shiftService'
@@ -347,11 +347,11 @@ function StaffDashboard() {
     enabled: !!userId,
     refetchInterval: 30_000,
   })
-  const { data: todayStaffStats } = useQuery({
-    queryKey: ['today-staff-stats', branchId, userId],
-    queryFn: () => getTodayStaffStats(branchId, userId),
+  const { data: todayBranchStats } = useQuery({
+    queryKey: ['today-stats-staff-branch', branchId],
+    queryFn: () => getTodayStats(branchId),
     refetchInterval: 30_000,
-    enabled: !!branchId && !!userId,
+    enabled: !!branchId,
   })
 
   const { data: lowStock = [] } = useQuery({
@@ -405,10 +405,10 @@ function StaffDashboard() {
           </div>
           <div>
             <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-              {formatCurrency(todayStaffStats?.revenue ?? 0)}
+              {formatCurrency(todayBranchStats?.revenue ?? 0)}
             </p>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Pendapatan Anda</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Hari ini di cabang ini</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Pemasukan Hari Ini</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Total cabang ini</p>
           </div>
         </div>
 
