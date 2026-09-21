@@ -256,20 +256,20 @@ export default function KasirPage() {
   }
 
   return (
-    <div className="flex flex-col gap-3 h-full">
+    <div className="flex flex-col gap-2 min-h-full">
       {isDeveloperOrManager && (
-        <div className="card p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="card p-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <GitBranch size={16} />
+              <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                <GitBranch size={14} />
                 Cabang Transaksi
               </p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 Pilih cabang hanya saat ingin transaksi. Pilih cabang terlebih dahulu untuk memulai transaksi.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {availableBranches.map((branch: Branch) => {
                 const isSelected = selectedBranch?.id === branch.id
                 return (
@@ -277,7 +277,7 @@ export default function KasirPage() {
                     key={branch.id}
                     type="button"
                     onClick={() => setSelectedBranch(isSelected ? null : branch)}
-                    className="px-3 py-2 rounded-xl border text-sm font-medium transition-colors"
+                    className="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
                     style={{
                       borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-color)',
                       background: isSelected ? 'rgba(37,99,235,0.08)' : 'var(--bg-card)',
@@ -292,7 +292,7 @@ export default function KasirPage() {
               })}
             </div>
           </div>
-          <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
             Cabang aktif: {selectedBranchLabel}
           </p>
         </div>
@@ -310,11 +310,11 @@ export default function KasirPage() {
       </div>
 
       {isReadOnly && (
-        <div className="card p-4 border-l-4 border-amber-400">
-          <div className="flex items-start justify-between gap-3">
+        <div className="card p-3 border-l-4 border-amber-400">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-amber-700">Read Only</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-semibold text-amber-700">Read Only</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 {!branchId
                   ? 'Anda melihat data semua cabang. Pilih cabang terlebih dahulu untuk bertransaksi.'
                   : 'Belum masuk shift. Aksi transaksi dikunci sampai masuk shift.'
@@ -329,7 +329,7 @@ export default function KasirPage() {
       )}
 
       {/* PRODUCT FILTERS */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0">
+      <div className="flex gap-1 overflow-x-auto pb-0.5 flex-shrink-0">
         <TabButton
           active={activeTab === 'favorit'}
           onClick={() => setActiveTab('favorit')}
@@ -357,15 +357,15 @@ export default function KasirPage() {
         ))}
       </div>
 
-      {/* PRODUCT LIST: this is the only scrolling area */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      {/* Product list follows the page scroll so the branch and status panels move with it. */}
+      <div>
         <div className="space-y-1 pr-1">
           {loadingProducts ? (
-            <div className="flex justify-center py-16">
+            <div className="flex justify-center py-10">
               <span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} />
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
               Produk tidak ditemukan
             </div>
           ) : (
@@ -378,7 +378,7 @@ export default function KasirPage() {
               return (
                 <div
                   key={product.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors"
                   style={{
                     background: isChecked ? 'rgba(37,99,235,0.05)' : 'var(--bg-card)',
                     border: `1px solid ${isChecked ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
@@ -681,7 +681,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap"
+      className="flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 whitespace-nowrap"
       style={{
         background: active ? colorVal : 'var(--bg-card)',
         border: '1px solid var(--border-color)',
