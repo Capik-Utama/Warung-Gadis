@@ -74,10 +74,11 @@ export default function ShiftPage() {
   }, [selectedBranch, activeShift, branches, setSelectedBranch])
 
   // Hanya staf non-developer yang boleh tampil sebagai staf aktif/pengganti.
-  // Akun developer tetap tersembunyi dari seluruh daftar shift.
   const visibleActiveShifts = allActive.filter(s => s.user?.role === 'staff')
   const otherActiveUsers = visibleActiveShifts.filter(s => s.user_id !== user?.id)
-  const visibleHistory = history.filter(s => s.user?.role !== 'developer')
+  const visibleHistory = user?.role === 'manager'
+    ? history.filter(s => s.user?.role !== 'developer')
+    : history
 
   const checkInMutation = useMutation({
     mutationFn: () => {
