@@ -318,6 +318,16 @@ svg {
   }
 }
 
+/* ── Desktop report table alignment ────────────────── */
+/* Keep the existing mobile layout, but center report table headers and cells
+   on wider screens where the full table is visible. */
+@media (min-width: 769px) {
+  .report-table-desktop-centered thead th,
+  .report-table-desktop-centered tbody td {
+    text-align: center !important;
+  }
+}
+
 /* ── Animations ─────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
