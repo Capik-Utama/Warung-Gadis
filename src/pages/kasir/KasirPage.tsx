@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
-import { fetchProducts } from '@/services/productService'
+import { fetchProducts, fetchProductsAllBranchesForCashier } from '@/services/productService'
 import { fetchCategories } from '@/services/categoryService'
 import { fetchBranches } from '@/services/branchService'
 import { createTransaction } from '@/services/transactionService'
@@ -57,8 +57,10 @@ export default function KasirPage() {
   const [debtPhone, setDebtPhone] = useState('')
   const [debtAddress, setDebtAddress] = useState('')
   const [showMemberSuggestions, setShowMemberSuggestions] = useState(false)
+  const [showAllBranches, setShowAllBranches] = useState(false)
 
   const branchId = selectedBranch?.id ?? ''
+  const allBranchesSelected = isDeveloperOrManager && showAllBranches
   const { favorites, toggle: toggleFavorite } = useFavorites(user?.id ?? '')
   const { data: activeShift } = useQuery({
     queryKey: ['active-shift', user?.id],
@@ -105,20 +107,24 @@ export default function KasirPage() {
 
   // Load products (all branches when no branch selected)
   const { data: products = [], isLoading: loadingProducts } = useQuery({
-    queryKey: ['products', branchId],
-    queryFn: () => fetchProducts(branchId),
+    queryKey: ['products', allBranchesSelected ? 'all-branches' : branchId],
+    queryFn: () => allBranchesSelected ? fetchProductsAllBranchesForCashier() : fetchProducts(branchId),
   })
 
   // Produk dengan stok 0 tidak boleh muncul atau tetap tercentang.
   // Kategori tetap berasal dari query categories, jadi kategori kosong tetap tampil.
   useEffect(() => {
-    if (!branchId || loadingProducts) return
+    if ((!branchId && !allBranchesSelected) || loadingProducts) return
+    if (allBranchesSelected && cart.items.length > 0) {
+      cart.clearCart()
+      return
+    }
     products.forEach((product) => {
       if ((product.stock ?? 0) <= 0 && cart.items.some((item) => item.product.id === product.id)) {
         cart.removeItem(product.id)
       }
     })
-  }, [branchId, cart, cart.items, loadingProducts, products])
+  }, [allBranchesSelected, branchId, cart, cart.items, loadingProducts, products])
 
   // Filter products
   const filteredProducts = useMemo(() => {
@@ -270,13 +276,31 @@ export default function KasirPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAllBranches(true)
+                  setSelectedBranch(null)
+                }}
+                className="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
+                style={{
+                  borderColor: allBranchesSelected ? 'var(--accent-primary)' : 'var(--border-color)',
+                  background: allBranchesSelected ? 'rgba(37,99,235,0.08)' : 'var(--bg-card)',
+                  color: allBranchesSelected ? 'var(--accent-primary)' : 'var(--text-primary)',
+                }}
+              >
+                Semuanya
+              </button>
               {availableBranches.map((branch: Branch) => {
                 const isSelected = selectedBranch?.id === branch.id
                 return (
                   <button
                     key={branch.id}
                     type="button"
-                    onClick={() => setSelectedBranch(isSelected ? null : branch)}
+                    onClick={() => {
+                      setShowAllBranches(false)
+                      setSelectedBranch(isSelected ? null : branch)
+                    }}
                     className="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
                     style={{
                       borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-color)',
@@ -293,7 +317,7 @@ export default function KasirPage() {
             </div>
           </div>
           <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
-            Cabang aktif: {selectedBranchLabel}
+            Cabang aktif: {allBranchesSelected ? 'Semuanya' : selectedBranchLabel}
           </p>
         </div>
       )}

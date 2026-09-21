@@ -68,6 +68,18 @@ export async function fetchProductsAllBranches(): Promise<ProductWithBranchStock
   })
 }
 
+/**
+ * Ambil produk untuk mode lihat semua cabang di Kasir.
+ * Stok yang ditampilkan adalah total stok seluruh cabang aktif/terdaftar.
+ */
+export async function fetchProductsAllBranchesForCashier(): Promise<Product[]> {
+  const products = await fetchProductsAllBranches()
+  return products.map(({ stocks_by_branch: _stocksByBranch, min_stock_by_branch: _minStockByBranch, total_stock, ...product }) => ({
+    ...product,
+    stock: total_stock,
+  }))
+}
+
 export async function fetchProductStocks(productId: string): Promise<ProductStock[]> {
   const { data, error } = await supabase
     .from('product_stocks')
