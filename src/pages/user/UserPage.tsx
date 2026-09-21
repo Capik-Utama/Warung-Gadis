@@ -180,18 +180,18 @@ export default function UserPage() {
                   <div>
                     <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
                     <div className="flex gap-2 mt-1">
-                      {roleBadge(u.role)}
+                      {(u.role !== 'developer' || currentUser?.role === 'developer') && roleBadge(u.role)}
                       {statusBadge(u.is_active ? 'active' : 'inactive')}
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex gap-1">
-                  {(currentUser?.role === 'developer' || currentUser?.role === 'manager') && (
+                  {(currentUser?.role === 'developer' || (currentUser?.role === 'manager' && u.role !== 'developer')) && (
                     <>
                       <button onClick={() => openEdit(u)} className="p-2 rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit Data"><Pencil size={18} /></button>
                       <button onClick={() => openPerms(u)} className="p-2 rounded-xl bg-amber-50 text-amber-500 hover:bg-amber-100" title="Hak Akses"><Shield size={18} /></button>
-                      {u.id !== currentUser.id && (
+                      {u.id !== currentUser.id && u.role !== 'developer' && (
                         <button onClick={() => setDel(u)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100" title="Hapus"><Trash2 size={18} /></button>
                       )}
                     </>
@@ -226,10 +226,11 @@ export default function UserPage() {
           <Input label="Nomor HP" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
           <Select label="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}
             options={[
-              ...((currentUser?.role === 'developer' || currentUser?.role === 'manager') ? [{ value: 'developer', label: 'Developer' }] : []),
+              ...(currentUser?.role === 'developer' ? [{ value: 'developer', label: 'Developer' }] : []),
               { value: 'manager', label: 'Manager' },
               { value: 'staff', label: 'Staff' }
             ]} 
+            disabled={editing?.role === 'developer' && currentUser?.role !== 'developer'}
           />
           <Input label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
           <div className="flex items-center gap-2">
