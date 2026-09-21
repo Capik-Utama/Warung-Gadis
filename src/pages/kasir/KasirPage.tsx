@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, ShoppingCart, CheckSquare, Square,
@@ -109,13 +109,25 @@ export default function KasirPage() {
     queryFn: () => fetchProducts(branchId),
   })
 
+  // Produk dengan stok 0 tidak boleh muncul atau tetap tercentang.
+  // Kategori tetap berasal dari query categories, jadi kategori kosong tetap tampil.
+  useEffect(() => {
+    if (!branchId || loadingProducts) return
+    products.forEach((product) => {
+      if ((product.stock ?? 0) <= 0 && cart.items.some((item) => item.product.id === product.id)) {
+        cart.removeItem(product.id)
+      }
+    })
+  }, [branchId, cart, cart.items, loadingProducts, products])
+
   // Filter products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
+      if (!p.is_active || (p.stock ?? 0) <= 0) return false
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
-      if (activeTab === 'all') return matchSearch && p.is_active
-      if (activeTab === 'favorit') return matchSearch && p.is_active && favorites.includes(p.id)
-      return matchSearch && p.category_id === activeTab && p.is_active
+      if (activeTab === 'all') return matchSearch
+      if (activeTab === 'favorit') return matchSearch && favorites.includes(p.id)
+      return matchSearch && p.category_id === activeTab
     })
   }, [products, search, activeTab, favorites])
 
