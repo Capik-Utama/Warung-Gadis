@@ -247,6 +247,7 @@ export async function getSoldProducts(filters: SoldProductReportFilters): Promis
       product_name: product?.name ?? row.product_id,
       unit: product?.unit ?? 'pcs',
       quantity: 0,
+      remaining_stock: 0,
       revenue: 0,
       transaction_count: 0,
       transactionIds: new Set<string>(),
@@ -258,8 +259,26 @@ export async function getSoldProducts(filters: SoldProductReportFilters): Promis
     grouped.set(row.product_id, existing)
   })
 
+  const productIds = Array.from(grouped.keys())
+  const stockByProduct = new Map<string, number>()
+  if (productIds.length > 0) {
+    let stockQuery = supabase
+      .from('product_stocks')
+      .select('product_id, stock')
+      .in('product_id', productIds)
+    if (filters.branchId) stockQuery = stockQuery.eq('branch_id', filters.branchId)
+    const { data: stocks, error: stockError } = await stockQuery
+    if (stockError) throw stockError
+    ;(stocks ?? []).forEach((stock: { product_id: string; stock: number }) => {
+      stockByProduct.set(stock.product_id, (stockByProduct.get(stock.product_id) ?? 0) + Number(stock.stock ?? 0))
+    })
+  }
+
   return Array.from(grouped.values())
-    .map(({ transactionIds: _transactionIds, ...row }) => row)
+    .map(({ transactionIds: _transactionIds, ...row }) => ({
+      ...row,
+      remaining_stock: stockByProduct.get(row.product_id) ?? 0,
+    }))
     .sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue)
 }
 

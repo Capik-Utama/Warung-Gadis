@@ -42,6 +42,7 @@ export interface SoldProductReportRow {
   product_name: string
   unit: string
   quantity: number
+  remaining_stock: number
   revenue: number
   transaction_count: number
 }
