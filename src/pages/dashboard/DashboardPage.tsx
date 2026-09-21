@@ -20,9 +20,9 @@ function OwnerDashboard() {
   const { selectedBranch } = useAuthStore()
   const branchId = selectedBranch?.id ?? ''
 
-  const { data: todayStats } = useQuery({
-    queryKey: ['today-stats', branchId],
-    queryFn: () => getTodayStats(branchId),
+  const { data: allBranchesTodayStats } = useQuery({
+    queryKey: ['today-stats-all-branches'],
+    queryFn: () => getTodayStats(''),
     refetchInterval: 30_000,
   })
 
@@ -93,13 +93,26 @@ function OwnerDashboard() {
           </div>
         </Link>
 
-        {/* Box 2: Pemasukan */}
-        <StatCard
-          title="Pemasukan Hari Ini"
-          value={formatCurrency(todayStats?.revenue ?? 0)}
-          icon={<TrendingUp size={20} className="text-green-600" />}
-          iconBg="bg-green-50"
-        />
+        {/* Box 2: Pemasukan semua cabang */}
+        <Link
+          to="/laporan"
+          className="stat-card cursor-pointer transition-all hover:shadow-md"
+          title="Buka laporan pemasukan dan gunakan filter detail"
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 rounded-xl bg-green-50">
+              <TrendingUp size={20} className="text-green-600" />
+            </div>
+            <ChevronRight size={16} className="text-green-300" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              {formatCurrency(allBranchesTodayStats?.revenue ?? 0)}
+            </p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Pemasukan Hari Ini</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Semua cabang • Klik untuk sortir</p>
+          </div>
+        </Link>
 
         {/* Box 3: Stok Menipis */}
         <div
