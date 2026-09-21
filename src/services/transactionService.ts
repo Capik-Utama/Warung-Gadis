@@ -22,7 +22,7 @@ export async function fetchTransactions(branchId: string): Promise<Transaction[]
 export async function fetchPendingTransactions(branchId: string): Promise<Transaction[]> {
   let query = supabase
     .from('transactions')
-    .select('*, items:transaction_items(*, product:products(id,name,unit))')
+    .select('*, user:users(id,name), items:transaction_items(*, product:products(id,name,unit))')
     .eq('status', 'pending')
 
   if (branchId) {
@@ -83,6 +83,18 @@ export async function payTransactionItems(
 ): Promise<void> {
   await ensureStaffWriteAccess()
 
+  if (itemIds.length === 0) throw new Error('Item Pending tidak ditemukan')
+
+  const { data: transactionItems, error: itemsError } = await supabase
+    .from('transaction_items')
+    .select('id, subtotal')
+    .eq('transaction_id', transactionId)
+  if (itemsError) throw itemsError
+  const totalAmount = (transactionItems ?? [])
+    .filter((item: { id: string }) => itemIds.includes(item.id))
+    .reduce((sum: number, item: { subtotal: number }) => sum + item.subtotal, 0)
+  if (paidAmount < totalAmount) throw new Error('Jumlah diterima kurang dari total Pending')
+
   // Mark items as paid
   const { error } = await supabase
     .from('transaction_items')
@@ -106,6 +118,7 @@ export async function payTransactionItems(
       status: allPaid ? 'paid' : 'pending',
       payment_method: paymentMethod,
       paid_amount: paidAmount,
+      change_amount: Math.max(0, paidAmount - totalAmount),
       user_id: userId, // Change ownership to the staff who received the payment
     })
     .eq('id', transactionId)

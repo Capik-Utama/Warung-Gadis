@@ -11,15 +11,15 @@ import { useCartStore } from '@/store/cartStore'
 import { fetchProducts, fetchProductsAllBranchesForCashier } from '@/services/productService'
 import { fetchCategories } from '@/services/categoryService'
 import { fetchBranches } from '@/services/branchService'
-import { createTransaction } from '@/services/transactionService'
+import { createTransaction, fetchPendingTransactions, payTransactionItems } from '@/services/transactionService'
 import { createDebt, fetchDebtMembers } from '@/services/debtService'
 import { getActiveShift } from '@/services/shiftService'
 import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { formatCurrency } from '@/utils/format'
-import type { Branch, Product, PaymentMethod } from '@/types'
+import { formatCurrency, formatDateTime } from '@/utils/format'
+import type { Branch, CartItem, Product, PaymentMethod, Transaction } from '@/types'
 
 const STORAGE_KEY = 'wg-favorites'
 
@@ -58,6 +58,8 @@ export default function KasirPage() {
   const [debtAddress, setDebtAddress] = useState('')
   const [showMemberSuggestions, setShowMemberSuggestions] = useState(false)
   const [showAllBranches, setShowAllBranches] = useState(false)
+  const [showPending, setShowPending] = useState(false)
+  const [pendingToPay, setPendingToPay] = useState<Transaction | null>(null)
 
   const branchId = selectedBranch?.id ?? ''
   const allBranchesSelected = isDeveloperOrManager && showAllBranches
@@ -111,6 +113,13 @@ export default function KasirPage() {
     queryFn: () => allBranchesSelected ? fetchProductsAllBranchesForCashier() : fetchProducts(branchId),
   })
 
+  const { data: pendingTransactions = [], isLoading: loadingPending } = useQuery({
+    queryKey: ['pending-transactions', branchId],
+    queryFn: () => fetchPendingTransactions(branchId),
+    enabled: !!branchId,
+    refetchInterval: 15_000,
+  })
+
   // Produk dengan stok 0 tidak boleh muncul atau tetap tercentang.
   // Kategori tetap berasal dari query categories, jadi kategori kosong tetap tampil.
   useEffect(() => {
@@ -125,6 +134,13 @@ export default function KasirPage() {
       }
     })
   }, [allBranchesSelected, branchId, cart, cart.items, loadingProducts, products])
+
+  useEffect(() => {
+    if (pendingToPay && pendingToPay.branch_id !== branchId) {
+      setPendingToPay(null)
+      cart.clearCart()
+    }
+  }, [branchId, cart, pendingToPay])
 
   // Filter products
   const filteredProducts = useMemo(() => {
@@ -147,16 +163,82 @@ export default function KasirPage() {
 
   // Ceklis produk: langsung pakai store method yang sudah handle add+toggle
   const handleCheckProduct = useCallback((product: Product) => {
+    if (pendingToPay) {
+      toast('Selesaikan pembayaran Pending terlebih dahulu.')
+      return
+    }
     cart.toggleCheckbox(product.id, product, product.base_price)
-  }, [cart])
+  }, [cart, pendingToPay])
 
   // Set qty dari input field
   const handleQtyChange = useCallback((productId: string, value: string) => {
+    if (pendingToPay) return
     const num = parseInt(value, 10)
     if (num >= 0) {
       cart.setQty(productId, num)
     }
-  }, [cart])
+  }, [cart, pendingToPay])
+
+  const openPendingOrder = useCallback((pending: Transaction) => {
+    const items: CartItem[] = (pending.items ?? []).map((item) => {
+      const product = products.find((candidate) => candidate.id === item.product_id)
+        ?? ({
+          id: item.product_id,
+          name: (item.product as Product | undefined)?.name ?? 'Produk',
+          category_id: '',
+          base_price: item.unit_price,
+          stock: 1,
+          min_stock: 0,
+          unit: (item.product as Product | undefined)?.unit ?? 'pcs',
+          image_url: null,
+          is_active: true,
+          created_at: '',
+          updated_at: '',
+        } as Product)
+      return {
+        product,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+        selected: true,
+        checked: true,
+      }
+    })
+    if (items.length === 0) {
+      toast.error('Pesanan Pending tidak memiliki item.')
+      return
+    }
+    cart.loadItems(items)
+    setPendingToPay(pending)
+    setShowPending(false)
+    toast.success(`Pesanan ${pending.code} siap dibayar`)
+  }, [cart, products])
+
+  const pendingMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !branchId) throw new Error('Pilih cabang terlebih dahulu')
+      if (checkedItems.length === 0) throw new Error('Pilih produk yang ingin ditunda')
+      if (pendingToPay) throw new Error('Selesaikan pembayaran Pending terlebih dahulu')
+      return createTransaction({
+        branchId,
+        userId: user.id,
+        items: checkedItems.map((item) => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })),
+        status: 'pending',
+        notes: 'Pesanan Pending untuk dilanjutkan staf berikutnya',
+      })
+    },
+    onSuccess: () => {
+      toast.success('Pesanan masuk Pending')
+      cart.clearCart()
+      qc.invalidateQueries({ queryKey: ['pending-transactions', branchId] })
+      qc.invalidateQueries({ queryKey: ['products', branchId] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
 
   // BAYAR
   const payMutation = useMutation({
@@ -171,14 +253,24 @@ export default function KasirPage() {
         unit_price: i.unit_price,
       }))
 
-      await createTransaction({
-        branchId,
-        userId: user.id,
-        items,
-        paymentMethod: payMethod,
-        paidAmount: paid,
-        status: 'paid',
-      })
+      if (pendingToPay) {
+        await payTransactionItems(
+          pendingToPay.id,
+          (pendingToPay.items ?? []).map((item) => item.id),
+          payMethod,
+          payMethod === 'cash' ? paid : checkedTotal,
+          user.id,
+        )
+      } else {
+        await createTransaction({
+          branchId,
+          userId: user.id,
+          items,
+          paymentMethod: payMethod,
+          paidAmount: paid,
+          status: 'paid',
+        })
+      }
     },
     onSuccess: () => {
       toast.success('Pembayaran berhasil!')
@@ -186,6 +278,9 @@ export default function KasirPage() {
       setPayModal(false)
       setPaidAmount('')
       setPayMethod('cash')
+      setPendingToPay(null)
+      qc.invalidateQueries({ queryKey: ['pending-transactions', branchId] })
+      qc.invalidateQueries({ queryKey: ['products', branchId] })
       qc.invalidateQueries({ queryKey: ['today-stats'] })
       
       // Developer & Manager harus pilih cabang lagi setelah transaksi
@@ -379,7 +474,63 @@ export default function KasirPage() {
             {cat.name}
           </TabButton>
         ))}
+        <TabButton
+          active={showPending}
+          onClick={() => setShowPending((value) => !value)}
+          badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
+          color="amber"
+        >
+          Pending
+        </TabButton>
       </div>
+
+      {showPending && (
+        <div className="card p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold">Pesanan Pending</h3>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Pilih pesanan untuk dilanjutkan pembayarannya.
+              </p>
+            </div>
+            <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>
+              {pendingTransactions.length} pesanan
+            </span>
+          </div>
+          {!branchId ? (
+            <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat Pending.</p>
+          ) : loadingPending ? (
+            <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Memuat Pending...</p>
+          ) : pendingTransactions.length === 0 ? (
+            <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Belum ada pesanan Pending.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {pendingTransactions.map((pending) => (
+                <button
+                  key={pending.id}
+                  type="button"
+                  onClick={() => openPendingOrder(pending)}
+                  disabled={!!pendingToPay}
+                  className="w-full text-left rounded-lg border px-2.5 py-2 transition-colors hover:bg-blue-50 disabled:opacity-50"
+                  style={{ borderColor: 'var(--border-color)', background: 'var(--bg-card)' }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>{pending.code}</span>
+                    <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(pending.total_amount)}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    <span>{pending.items?.length ?? 0} item</span>
+                    <span>•</span>
+                    <span>{pending.user?.name ?? 'Staf sebelumnya'}</span>
+                    <span>•</span>
+                    <span>{formatDateTime(pending.created_at)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Product list follows the page scroll so the branch and status panels move with it. */}
       <div>
@@ -469,17 +620,26 @@ export default function KasirPage() {
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              {checkedCount} item dipilih
+              {pendingToPay ? `Pending ${pendingToPay.code}` : `${checkedCount} item dipilih`}
             </span>
             <p className="text-base font-bold" style={{ color: 'var(--accent-primary)' }}>
               {formatCurrency(checkedTotal)}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
+            <Button
+              variant="warning"
+              className="text-[11px] px-1 py-1.5 min-h-0 h-9"
+              onClick={isReadOnly || !!pendingToPay ? goToShiftPage : () => pendingMutation.mutate()}
+              disabled={isReadOnly || !!pendingToPay}
+              loading={pendingMutation.isPending}
+            >
+              PENDING
+            </Button>
             <Button
               variant="danger"
-              className="text-xs py-1.5 min-h-0 h-9"
+              className="text-[11px] px-1 py-1.5 min-h-0 h-9"
               onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
               disabled={isReadOnly}
             >
@@ -487,7 +647,7 @@ export default function KasirPage() {
             </Button>
             <Button
               variant="success"
-              className="text-xs py-1.5 min-h-0 h-9"
+              className="text-[11px] px-1 py-1.5 min-h-0 h-9"
               onClick={isReadOnly ? goToShiftPage : () => setPayModal(true)}
               disabled={isReadOnly}
               icon={<CreditCard size={14} />}

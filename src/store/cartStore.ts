@@ -11,6 +11,7 @@ interface CartStore {
   setQty: (productId: string, qty: number) => void
   updateQty: (productId: string, qty: number) => void
   toggleCheckbox: (productId: string, product: Product, price: number) => void
+  loadItems: (items: CartItem[]) => void
   selectAll: () => void
   deselectAll: () => void
   setCustomer: (name: string, phone: string) => void
@@ -122,6 +123,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
       }))
     }
   },
+
+  loadItems: (items) => set({ items }),
 
   toggleSelect: (productId: string) =>
     set((s) => ({
