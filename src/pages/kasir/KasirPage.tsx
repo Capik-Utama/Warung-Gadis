@@ -451,20 +451,20 @@ export default function KasirPage() {
       {/* PRODUCT FILTERS */}
       <div className="flex gap-1 overflow-x-auto pb-0.5 flex-shrink-0">
         <TabButton
-          active={activeTab === 'favorit'}
-          onClick={() => setActiveTab('favorit')}
-          badge={favorites.length > 0 ? favorites.length : undefined}
-          color="green"
-        >
-          FAVORIT
-        </TabButton>
-        <TabButton
           active={showPending}
           onClick={() => setShowPending((value) => !value)}
           badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
           color="amber"
         >
           Pending
+        </TabButton>
+        <TabButton
+          active={activeTab === 'favorit'}
+          onClick={() => setActiveTab('favorit')}
+          badge={favorites.length > 0 ? favorites.length : undefined}
+          color="green"
+        >
+          FAVORIT
         </TabButton>
         <TabButton
           active={activeTab === 'all'}
