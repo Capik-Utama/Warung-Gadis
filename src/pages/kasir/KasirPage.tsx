@@ -485,8 +485,19 @@ export default function KasirPage() {
         ))}
       </div>
 
-      <Modal isOpen={showPending} onClose={() => setShowPending(false)} title="Pesanan Pending" size="md">
-        <div className="space-y-2">
+      {showPending && (
+        <div className="card p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold">Pesanan Pending</h3>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Pilih produk untuk dilanjutkan pembayarannya.
+              </p>
+            </div>
+            <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>
+              {pendingTransactions.length} pesanan
+            </span>
+          </div>
           {!branchId ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat Pending.</p>
           ) : loadingPending ? (
@@ -516,7 +527,7 @@ export default function KasirPage() {
             </div>
           )}
         </div>
-      </Modal>
+      )}
 
       {/* Product list scrolls together with the branch and status panels. */}
       <div>
