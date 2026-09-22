@@ -149,6 +149,38 @@ export async function markTransactionAsDebt(
     .neq('status', 'paid')
 }
 
+export async function markTransactionItemsAsDebt(
+  transactionId: string,
+  itemIds: string[],
+  customerName: string,
+  customerPhone: string,
+): Promise<void> {
+  await ensureStaffWriteAccess()
+  if (itemIds.length === 0) throw new Error('Item Pending tidak ditemukan')
+
+  const { error: itemsError } = await supabase
+    .from('transaction_items')
+    .update({ status: 'debt' })
+    .in('id', itemIds)
+  if (itemsError) throw itemsError
+
+  const { data: items, error: fetchError } = await supabase
+    .from('transaction_items')
+    .select('status')
+    .eq('transaction_id', transactionId)
+  if (fetchError) throw fetchError
+
+  const hasPendingItems = (items ?? []).some((item: { status: string }) => item.status === 'pending')
+  const hasDebtItems = (items ?? []).some((item: { status: string }) => item.status === 'debt')
+  const status = hasPendingItems ? 'pending' : hasDebtItems ? 'debt' : 'paid'
+
+  const { error: transactionError } = await supabase
+    .from('transactions')
+    .update({ status, customer_name: customerName, customer_phone: customerPhone })
+    .eq('id', transactionId)
+  if (transactionError) throw transactionError
+}
+
 export async function cancelTransactionItems(
   transactionId: string,
   itemIds: string[],

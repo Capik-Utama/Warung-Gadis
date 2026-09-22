@@ -11,7 +11,7 @@ import { useCartStore } from '@/store/cartStore'
 import { fetchProducts, fetchProductsAllBranchesForCashier } from '@/services/productService'
 import { fetchCategories } from '@/services/categoryService'
 import { fetchBranches } from '@/services/branchService'
-import { createTransaction, fetchPendingTransactions, payTransactionItems } from '@/services/transactionService'
+import { createTransaction, fetchPendingTransactions, markTransactionItemsAsDebt, payTransactionItems } from '@/services/transactionService'
 import { createDebt, fetchDebtMembers } from '@/services/debtService'
 import { getActiveShift } from '@/services/shiftService'
 import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
@@ -124,6 +124,7 @@ export default function KasirPage() {
   // Kategori tetap berasal dari query categories, jadi kategori kosong tetap tampil.
   useEffect(() => {
     if ((!branchId && !allBranchesSelected) || loadingProducts) return
+    if (pendingToPay) return
     if (allBranchesSelected && cart.items.length > 0) {
       cart.clearCart()
       return
@@ -315,13 +316,29 @@ export default function KasirPage() {
       if (!debtName.trim()) throw new Error('Nama pelanggan wajib diisi')
       if (checkedCount === 0) throw new Error('Pilih item yang ingin dicatat sebagai member')
 
+      const totalAmount = checkedItems.reduce((s, i) => s + i.subtotal, 0)
+
+      if (pendingToPay) {
+        const pendingItemIds = (pendingToPay.items ?? [])
+          .filter((item) => checkedItems.some((checkedItem) => checkedItem.product.id === item.product_id))
+          .map((item) => item.id)
+        await markTransactionItemsAsDebt(pendingToPay.id, pendingItemIds, debtName, debtPhone)
+        await createDebt({
+          transaction_id: pendingToPay.id,
+          branch_id: branchId,
+          customer_name: debtName,
+          customer_address: debtAddress || undefined,
+          customer_phone: debtPhone,
+          total_amount: totalAmount,
+        })
+        return
+      }
+
       const items = checkedItems.map((i) => ({
         product_id: i.product.id,
         quantity: i.quantity,
         unit_price: i.unit_price,
       }))
-
-      const totalAmount = checkedItems.reduce((s, i) => s + i.subtotal, 0)
 
       const trx = await createTransaction({
         branchId,
@@ -344,11 +361,14 @@ export default function KasirPage() {
     onSuccess: () => {
       toast.success('Member berhasil dicatat!')
       cart.clearCart()
+      setPendingToPay(null)
       setDebtModal(false)
       setDebtName('')
       setDebtPhone('')
       setDebtAddress('')
       qc.invalidateQueries({ queryKey: ['debts'] })
+      qc.invalidateQueries({ queryKey: ['pending-transactions', branchId] })
+      qc.invalidateQueries({ queryKey: ['products', branchId] })
 
       // Developer & Manager harus pilih cabang lagi setelah transaksi
       if (user?.role === 'developer' || user?.role === 'manager') {
@@ -658,28 +678,26 @@ export default function KasirPage() {
             </p>
           </div>
 
-          <div className={pendingToPay ? 'grid grid-cols-1 gap-1.5' : 'grid grid-cols-3 gap-1.5'}>
+          <div className={pendingToPay ? 'grid grid-cols-2 gap-1.5' : 'grid grid-cols-3 gap-1.5'}>
             {!pendingToPay && (
-              <>
-                <Button
-                  variant="warning"
-                  className="text-[11px] px-1 py-1.5 min-h-0 h-9"
-                  onClick={isReadOnly ? goToShiftPage : () => pendingMutation.mutate()}
-                  disabled={isReadOnly}
-                  loading={pendingMutation.isPending}
-                >
-                  PENDING
-                </Button>
-                <Button
-                  variant="danger"
-                  className="text-[11px] px-1 py-1.5 min-h-0 h-9"
-                  onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
-                  disabled={isReadOnly}
-                >
-                  MEMBER
-                </Button>
-              </>
+              <Button
+                variant="warning"
+                className="text-[11px] px-1 py-1.5 min-h-0 h-9"
+                onClick={isReadOnly ? goToShiftPage : () => pendingMutation.mutate()}
+                disabled={isReadOnly}
+                loading={pendingMutation.isPending}
+              >
+                PENDING
+              </Button>
             )}
+            <Button
+              variant="danger"
+              className="text-[11px] px-1 py-1.5 min-h-0 h-9"
+              onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
+              disabled={isReadOnly}
+            >
+              MEMBER
+            </Button>
             <Button
               variant="success"
               className="text-[11px] px-1 py-1.5 min-h-0 h-9"
