@@ -459,6 +459,14 @@ export default function KasirPage() {
           FAVORIT
         </TabButton>
         <TabButton
+          active={showPending}
+          onClick={() => setShowPending((value) => !value)}
+          badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
+          color="amber"
+        >
+          Pending
+        </TabButton>
+        <TabButton
           active={activeTab === 'all'}
           onClick={() => setActiveTab('all')}
           color="blue"
@@ -475,14 +483,6 @@ export default function KasirPage() {
             {cat.name}
           </TabButton>
         ))}
-        <TabButton
-          active={showPending}
-          onClick={() => setShowPending((value) => !value)}
-          badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
-          color="amber"
-        >
-          Pending
-        </TabButton>
       </div>
 
       {showPending && (
