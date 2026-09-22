@@ -214,6 +214,7 @@ export default function KasirPage() {
     }
     cart.loadItems(items)
     setPendingToPay(pending)
+    setActiveTab('all')
     setShowPending(false)
     toast.success(`Pesanan ${pending.code} siap dibayar`)
   }, [allBranchesSelected, cart, products])
@@ -456,7 +457,10 @@ export default function KasirPage() {
       <div className="flex gap-1 overflow-x-auto pb-0.5 flex-shrink-0">
         <TabButton
           active={showPending}
-          onClick={() => setShowPending((value) => !value)}
+          onClick={() => {
+            setActiveTab('pending')
+            setShowPending(true)
+          }}
           badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
           color="amber"
         >
@@ -464,7 +468,10 @@ export default function KasirPage() {
         </TabButton>
         <TabButton
           active={activeTab === 'favorit'}
-          onClick={() => setActiveTab('favorit')}
+          onClick={() => {
+            setActiveTab('favorit')
+            setShowPending(false)
+          }}
           badge={favorites.length > 0 ? favorites.length : undefined}
           color="green"
         >
@@ -472,7 +479,10 @@ export default function KasirPage() {
         </TabButton>
         <TabButton
           active={activeTab === 'all'}
-          onClick={() => setActiveTab('all')}
+          onClick={() => {
+            setActiveTab('all')
+            setShowPending(false)
+          }}
           color="blue"
         >
           Semua
@@ -481,7 +491,10 @@ export default function KasirPage() {
           <TabButton
             key={cat.id}
             active={activeTab === cat.id}
-            onClick={() => setActiveTab(cat.id)}
+            onClick={() => {
+              setActiveTab(cat.id)
+              setShowPending(false)
+            }}
             color="blue"
           >
             {cat.name}
