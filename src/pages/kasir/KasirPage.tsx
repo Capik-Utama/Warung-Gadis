@@ -156,6 +156,10 @@ export default function KasirPage() {
   const checkedTotal = cart.getCheckedTotal()
   const checkedCount = cart.getCheckedCount()
   const checkedItems = cart.getCheckedItems()
+  const pendingItemCount = pendingTransactions.reduce(
+    (count, transaction) => count + (transaction.items ?? []).filter((item) => item.status === 'pending').length,
+    0,
+  )
   const paid = parseInt(paidAmount.replace(/\D/g, ''), 10) || 0
   const change = paid - checkedTotal
 
@@ -179,12 +183,19 @@ export default function KasirPage() {
     }
   }, [cart, pendingToPay])
 
-  const openPendingOrder = useCallback((pending: Transaction) => {
+  const openPendingOrder = useCallback((pending: Transaction, pendingItemId: string) => {
     if (allBranchesSelected) {
       toast('Pilih cabang tertentu untuk membayar pesanan Pending.')
       return
     }
-    const items: CartItem[] = (pending.items ?? []).map((item) => {
+    const selectedPendingItem = (pending.items ?? []).find(
+      (item) => item.id === pendingItemId && item.status === 'pending',
+    )
+    if (!selectedPendingItem) {
+      toast.error('Item Pending sudah tidak tersedia.')
+      return
+    }
+    const items: CartItem[] = [selectedPendingItem].map((item) => {
       const product = products.find((candidate) => candidate.id === item.product_id)
         ?? ({
           id: item.product_id,
@@ -261,7 +272,9 @@ export default function KasirPage() {
       if (pendingToPay) {
         await payTransactionItems(
           pendingToPay.id,
-          (pendingToPay.items ?? []).map((item) => item.id),
+          (pendingToPay.items ?? [])
+            .filter((item) => checkedItems.some((checkedItem) => checkedItem.product.id === item.product_id))
+            .map((item) => item.id),
           payMethod,
           payMethod === 'cash' ? paid : checkedTotal,
           user.id,
@@ -461,7 +474,7 @@ export default function KasirPage() {
             setActiveTab('pending')
             setShowPending(true)
           }}
-          badge={pendingTransactions.length > 0 ? pendingTransactions.length : undefined}
+          badge={pendingItemCount > 0 ? pendingItemCount : undefined}
           color="amber"
         >
           Pending
@@ -508,14 +521,14 @@ export default function KasirPage() {
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat Pending.</p>
           ) : loadingPending ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Memuat Pending...</p>
-          ) : pendingTransactions.length === 0 ? (
+          ) : pendingItemCount === 0 ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Belum ada pesanan Pending.</p>
           ) : (
-            pendingTransactions.flatMap((pending) => (pending.items ?? []).map((item) => (
+            pendingTransactions.flatMap((pending) => (pending.items ?? []).filter((item) => item.status === 'pending').map((item) => (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => openPendingOrder(pending)}
+                onClick={() => openPendingOrder(pending, item.id)}
                 disabled={!!pendingToPay}
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors text-left disabled:opacity-50"
                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
