@@ -503,18 +503,7 @@ export default function KasirPage() {
       </div>
 
       {showPending && (
-        <div className="card p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold">Pesanan Pending</h3>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                {allBranchesSelected ? 'Pilih cabang tertentu untuk melanjutkan pembayaran.' : 'Pilih produk untuk dilanjutkan pembayarannya.'}
-              </p>
-            </div>
-            <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>
-              {pendingTransactions.length} pesanan
-            </span>
-          </div>
+        <div className="space-y-1 pr-1">
           {!branchId && !allBranchesSelected ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat Pending.</p>
           ) : loadingPending ? (
@@ -522,26 +511,29 @@ export default function KasirPage() {
           ) : pendingTransactions.length === 0 ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Belum ada pesanan Pending.</p>
           ) : (
-            <div className="space-y-1.5">
-              {pendingTransactions.map((pending) => (
-                <button
-                  key={pending.id}
-                  type="button"
-                  onClick={() => openPendingOrder(pending)}
-                  disabled={!!pendingToPay}
-                  className="w-full text-left rounded-lg border px-2.5 py-2 transition-colors hover:bg-blue-50 disabled:opacity-50"
-                  style={{ borderColor: 'var(--border-color)', background: 'var(--bg-card)' }}
-                >
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {(pending.items ?? []).map((item) => (
-                      <span key={item.id}>
-                        {(item.product as { name?: string })?.name ?? 'Produk'} × {item.quantity}
-                      </span>
-                    ))}
-                  </div>
-                </button>
-              ))}
-            </div>
+            pendingTransactions.flatMap((pending) => (pending.items ?? []).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => openPendingOrder(pending)}
+                disabled={!!pendingToPay}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors text-left disabled:opacity-50"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
+              >
+                <Square size={18} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                    {(item.product as { name?: string })?.name ?? 'Produk'}
+                  </p>
+                  <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+                    {formatCurrency(item.unit_price)} × {item.quantity}
+                  </span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold flex-shrink-0">
+                  Pending
+                </span>
+              </button>
+            )))
           )}
         </div>
       )}
