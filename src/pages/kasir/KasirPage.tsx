@@ -548,8 +548,15 @@ export default function KasirPage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => openPendingOrder(pending, item.id)}
-                  disabled={!!pendingToPay}
+                  onClick={() => {
+                    if (isPendingItemChecked) {
+                      cart.clearCart()
+                      setPendingToPay(null)
+                      return
+                    }
+                    openPendingOrder(pending, item.id)
+                  }}
+                  disabled={!!pendingToPay && !isPendingItemChecked}
                   aria-pressed={isPendingItemChecked}
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors text-left disabled:opacity-50"
                   style={{
