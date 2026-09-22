@@ -225,8 +225,6 @@ export default function KasirPage() {
     }
     cart.loadItems(items)
     setPendingToPay(pending)
-    setActiveTab('all')
-    setShowPending(false)
     toast.success(`Pesanan ${pending.code} siap dibayar`)
   }, [allBranchesSelected, cart, products])
 
@@ -524,29 +522,38 @@ export default function KasirPage() {
           ) : pendingItemCount === 0 ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Belum ada pesanan Pending.</p>
           ) : (
-            pendingTransactions.flatMap((pending) => (pending.items ?? []).filter((item) => item.status === 'pending').map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => openPendingOrder(pending, item.id)}
-                disabled={!!pendingToPay}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors text-left disabled:opacity-50"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
-              >
-                <Square size={18} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                    {(item.product as { name?: string })?.name ?? 'Produk'}
-                  </p>
-                  <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
-                    {formatCurrency(item.unit_price)} × {item.quantity}
+            pendingTransactions.flatMap((pending) => (pending.items ?? []).filter((item) => item.status === 'pending').map((item) => {
+              const isPendingItemChecked = pendingToPay?.id === pending.id && cart.isChecked(item.product_id)
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openPendingOrder(pending, item.id)}
+                  disabled={!!pendingToPay}
+                  aria-pressed={isPendingItemChecked}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors text-left disabled:opacity-50"
+                  style={{
+                    background: isPendingItemChecked ? 'rgba(37,99,235,0.05)' : 'var(--bg-card)',
+                    border: `1px solid ${isPendingItemChecked ? 'rgba(37,99,235,0.2)' : 'var(--border-color)'}`,
+                  }}
+                >
+                  {isPendingItemChecked
+                    ? <CheckSquare size={18} className="flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                    : <Square size={18} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                      {(item.product as { name?: string })?.name ?? 'Produk'}
+                    </p>
+                    <span className="text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+                      {formatCurrency(item.unit_price)} × {item.quantity}
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold flex-shrink-0">
+                    Pending
                   </span>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold flex-shrink-0">
-                  Pending
-                </span>
-              </button>
-            )))
+                </button>
+              )
+            }))
           )}
         </div>
       )}
@@ -651,24 +658,28 @@ export default function KasirPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5">
-            <Button
-              variant="warning"
-              className="text-[11px] px-1 py-1.5 min-h-0 h-9"
-              onClick={isReadOnly || !!pendingToPay ? goToShiftPage : () => pendingMutation.mutate()}
-              disabled={isReadOnly || !!pendingToPay}
-              loading={pendingMutation.isPending}
-            >
-              PENDING
-            </Button>
-            <Button
-              variant="danger"
-              className="text-[11px] px-1 py-1.5 min-h-0 h-9"
-              onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
-              disabled={isReadOnly}
-            >
-              MEMBER
-            </Button>
+          <div className={pendingToPay ? 'grid grid-cols-1 gap-1.5' : 'grid grid-cols-3 gap-1.5'}>
+            {!pendingToPay && (
+              <>
+                <Button
+                  variant="warning"
+                  className="text-[11px] px-1 py-1.5 min-h-0 h-9"
+                  onClick={isReadOnly ? goToShiftPage : () => pendingMutation.mutate()}
+                  disabled={isReadOnly}
+                  loading={pendingMutation.isPending}
+                >
+                  PENDING
+                </Button>
+                <Button
+                  variant="danger"
+                  className="text-[11px] px-1 py-1.5 min-h-0 h-9"
+                  onClick={isReadOnly ? goToShiftPage : () => setDebtModal(true)}
+                  disabled={isReadOnly}
+                >
+                  MEMBER
+                </Button>
+              </>
+            )}
             <Button
               variant="success"
               className="text-[11px] px-1 py-1.5 min-h-0 h-9"
