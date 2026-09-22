@@ -533,6 +533,8 @@ export default function KasirPage() {
         </div>
       )}
 
+      {!showPending && (
+        <>
       {/* Product list scrolls together with the branch and status panels. */}
       <div>
         <div className="space-y-1 pr-1">
@@ -612,6 +614,8 @@ export default function KasirPage() {
           )}
         </div>
       </div>
+        </>
+      )}
       </div>
 
       {/* Action menu stays visible as soon as a product is checked. */}
