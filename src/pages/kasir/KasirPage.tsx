@@ -18,7 +18,7 @@ import { STAFF_SHIFT_REQUIRED_MESSAGE } from '@/services/accessGuardService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { formatCurrency, formatDateTime } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
 import type { Branch, CartItem, Product, PaymentMethod, Transaction } from '@/types'
 
 const STORAGE_KEY = 'wg-favorites'
@@ -487,16 +487,6 @@ export default function KasirPage() {
 
       <Modal isOpen={showPending} onClose={() => setShowPending(false)} title="Pesanan Pending" size="md">
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Pilih pesanan untuk dilanjutkan pembayarannya.
-              </p>
-            </div>
-            <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>
-              {pendingTransactions.length} pesanan
-            </span>
-          </div>
           {!branchId ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat Pending.</p>
           ) : loadingPending ? (
@@ -514,16 +504,12 @@ export default function KasirPage() {
                   className="w-full text-left rounded-lg border px-2.5 py-2 transition-colors hover:bg-blue-50 disabled:opacity-50"
                   style={{ borderColor: 'var(--border-color)', background: 'var(--bg-card)' }}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>{pending.code}</span>
-                    <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(pending.total_amount)}</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    <span>{pending.items?.length ?? 0} item</span>
-                    <span>•</span>
-                    <span>{pending.user?.name ?? 'Staf sebelumnya'}</span>
-                    <span>•</span>
-                    <span>{formatDateTime(pending.created_at)}</span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {(pending.items ?? []).map((item) => (
+                      <span key={item.id}>
+                        {(item.product as { name?: string })?.name ?? 'Produk'} × {item.quantity}
+                      </span>
+                    ))}
                   </div>
                 </button>
               ))}
