@@ -114,9 +114,9 @@ export default function KasirPage() {
   })
 
   const { data: pendingTransactions = [], isLoading: loadingPending } = useQuery({
-    queryKey: ['pending-transactions', branchId],
-    queryFn: () => fetchPendingTransactions(branchId),
-    enabled: !!branchId,
+    queryKey: ['pending-transactions', allBranchesSelected ? 'all-branches' : branchId],
+    queryFn: () => fetchPendingTransactions(allBranchesSelected ? '' : branchId),
+    enabled: allBranchesSelected || !!branchId,
     refetchInterval: 15_000,
   })
 
@@ -180,6 +180,10 @@ export default function KasirPage() {
   }, [cart, pendingToPay])
 
   const openPendingOrder = useCallback((pending: Transaction) => {
+    if (allBranchesSelected) {
+      toast('Pilih cabang tertentu untuk membayar pesanan Pending.')
+      return
+    }
     const items: CartItem[] = (pending.items ?? []).map((item) => {
       const product = products.find((candidate) => candidate.id === item.product_id)
         ?? ({
@@ -212,7 +216,7 @@ export default function KasirPage() {
     setPendingToPay(pending)
     setShowPending(false)
     toast.success(`Pesanan ${pending.code} siap dibayar`)
-  }, [cart, products])
+  }, [allBranchesSelected, cart, products])
 
   const pendingMutation = useMutation({
     mutationFn: async () => {
@@ -491,14 +495,14 @@ export default function KasirPage() {
             <div>
               <h3 className="text-sm font-semibold">Pesanan Pending</h3>
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Pilih produk untuk dilanjutkan pembayarannya.
+                {allBranchesSelected ? 'Pilih cabang tertentu untuk melanjutkan pembayaran.' : 'Pilih produk untuk dilanjutkan pembayarannya.'}
               </p>
             </div>
             <span className="text-xs font-semibold" style={{ color: 'var(--accent-primary)' }}>
               {pendingTransactions.length} pesanan
             </span>
           </div>
-          {!branchId ? (
+          {!branchId && !allBranchesSelected ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Pilih cabang untuk melihat Pending.</p>
           ) : loadingPending ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Memuat Pending...</p>
