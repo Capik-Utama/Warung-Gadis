@@ -109,6 +109,10 @@ export default function ProdukPage() {
     () => products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
     [products, search],
   )
+  const availableProductCount = useMemo(
+    () => products.filter((p) => p.total_stock > 0).length,
+    [products],
+  )
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -199,7 +203,7 @@ export default function ProdukPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Produk</h1>
-          <p className="page-subtitle">{products.length} produk terdaftar</p>
+          <p className="page-subtitle">{availableProductCount} produk tersedia</p>
         </div>
         {canAdd && (
           <div className="flex gap-2">
@@ -249,6 +253,7 @@ export default function ProdukPage() {
       >
         {slides.map((slide) => {
           const isTotal = slide.key === TOTAL_KEY
+          const visibleProducts = filtered.filter((p) => stockOf(p, slide.key) > 0)
           return (
             <div key={slide.key} className="w-full flex-shrink-0 snap-center pr-0">
               {isTotal && (
@@ -275,14 +280,14 @@ export default function ProdukPage() {
                           <span className="loading-spinner" style={{ color: 'var(--accent-primary)' }} />
                         </td>
                       </tr>
-                    ) : filtered.length === 0 ? (
+                    ) : visibleProducts.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>
                           Tidak ada produk
                         </td>
                       </tr>
                     ) : (
-                      filtered.map((p) => {
+                      visibleProducts.map((p) => {
                         const stock = stockOf(p, slide.key)
                         const min = minStockOf(p, slide.key)
                         return (
